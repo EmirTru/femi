@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Femi - Sohbet Başlangıcı</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="images/2.png">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Inter font for a clean and modern look */
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Dynamic gradient background */
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center; /* Center content vertically and horizontally */
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow: hidden; /* Prevent scrolling if content overflows */
+            position: relative; /* Canvas için göreceli konumlandırma */
+        }
+        /* Canvas arka planı */
+        #drawingCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0; /* İçeriğin arkasında kalması için */
+        }
+        .container {
+            /* Beyaz kutucuğun arka plan rengi açık gri olarak güncellendi */
+            background-color: rgba(243, 244, 246, 0.95); /* Tailwind gray-100'e yakın bir ton */
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2); /* Enhanced shadow for depth */
+            width: 100%;
+            max-width: 600px; /* Max width for better readability */
+            text-align: center;
+            opacity: 0; /* Hidden initially for animation */
+            transform: translateY(30px); /* Slightly moved down initially */
+            animation: fadeInSlideUpContainer 0.8s ease-out forwards; /* Fade in and slide up animation */
+            backdrop-filter: blur(5px); /* Subtle blur effect for background */
+            position: relative; /* İçeriğin canvas'ın üzerinde olması için */
+            z-index: 1; /* Canvas'ın üzerinde kalması için */
+        }
+
+        /* Keyframes for the main container's entrance animation */
+        @keyframes fadeInSlideUpContainer {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Femi logo text styling */
+        .femi-logo-text {
+            font-size: 3.5rem; /* Large font size for prominence */
+            font-weight: 800; /* Extra bold */
+            color: #4a5568; /* Yazı rengi daha açık gri (Tailwind gray-600) olarak güncellendi */
+            margin-right: 10px; /* Space between text and icon */
+            letter-spacing: -0.05em; /* Slightly tighter letter spacing */
+        }
+
+        /* Camera icon image styling */
+        .camera-icon-img {
+            height: 50px; /* Height of the camera icon */
+            width: auto; /* Auto width to maintain aspect ratio */
+            transition: transform 0.3s ease-in-out; /* Smooth rotation transition */
+        }
+        .camera-icon-img:hover {
+            transform: rotate(10deg); /* Slight rotation on hover */
+        }
+
+        /* Start button styling */
+        .start-button {
+            background: linear-gradient(45deg, #3b82f6, #2563eb); /* Gradient background */
+            transition: all 0.3s ease; /* Smooth transitions for all properties */
+            border: none; /* No border */
+            outline: none; /* No outline on focus */
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+        .start-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: all 0.4s ease;
+            z-index: -1;
+        }
+        .start-button:hover::before {
+            left: 100%;
+        }
+        .start-button:hover {
+            background: linear-gradient(45deg, #2563eb, #3b82f6); /* Reverse gradient on hover */
+            transform: translateY(-3px) scale(1.02); /* Lift and slightly enlarge on hover */
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.3); /* More pronounced shadow */
+        }
+        .start-button:active {
+            transform: translateY(0) scale(1); /* Reset on click */
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15); /* Smaller shadow on click */
+        }
+    </style>
+</head>
+<body>
+    <!-- Çizim için canvas elementi -->
+    <canvas id="drawingCanvas"></canvas>
+
+    <div class="container">
+        <h1 class="text-5xl font-extrabold text-center text-gray-800 mb-8 flex items-center justify-center">
+            <span class="femi-logo-text">Femi</span>
+            <!-- Femi yazısının yanındaki fotoğraf images klasöründeki 2.png olsun -->
+            <img src="images/2.png" alt="Kamera İkonu" class="camera-icon-img" onerror="this.onerror=null;this.src='https://placehold.co/50x50/FFD700/000000/png?text=%E2%97%8F%E2%96%A0%E2%96%A0'">
+        </h1>
+        <p class="text-2xl text-gray-500 mb-8 leading-relaxed"> <!-- Yazı boyutu text-xl'den text-2xl'ye büyütüldü -->
+            Merhaba! Ben Femi. Seninle sohbet etmek ve sana yardımcı olmak için buradayım. Hadi başlayalım mı?
+        </p>
+        <div class="flex justify-center">
+            <button id="startChatButton"
+                    class="p-4 px-8 rounded-full text-white font-bold shadow-lg start-button text-lg">
+                Sohbete Başla
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Canvas ve çizim bağlamını al
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Çizim durumu değişkenleri
+        let lastX = 0;
+        let lastY = 0;
+        let isMouseOverCanvas = false; // Fare canvas üzerinde mi kontrolü
+
+        // Canvas boyutunu pencere boyutuna ayarla
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            // Boyut değiştiğinde canvas'ı tamamen temizle
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Pencere boyutu değiştiğinde canvas'ı yeniden boyutlandır
+        window.addEventListener('resize', resizeCanvas);
+        // Sayfa yüklendiğinde canvas'ı ayarla
+        window.addEventListener('load', () => {
+            resizeCanvas();
+            animate(); // Animasyon döngüsünü başlat
+        });
+
+        // Fare hareket ettiğinde çizim yap (basılı tutmaya gerek yok)
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isMouseOverCanvas) { // Eğer fare yeni girdiyse, başlangıç noktasını ayarla
+                [lastX, lastY] = [e.offsetX, e.offsetY];
+                isMouseOverCanvas = true;
+            }
+
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(e.offsetX, e.offsetY);
+            // Çizgi rengini tamamen beyaz yaptık
+            ctx.strokeStyle = 'rgba(255, 255, 255, 1)';
+            ctx.lineWidth = 10; // Çizgi kalınlığı 2 katına çıkarıldı (5'ten 10'a)
+            ctx.lineCap = 'round'; // Çizgi uçlarını yuvarla
+            ctx.stroke();
+
+            [lastX, lastY] = [e.offsetX, e.offsetY]; // Son konumu güncelle
+        });
+
+        // Fare canvas dışına çıktığında çizimi durdur
+        canvas.addEventListener('mouseout', () => {
+            isMouseOverCanvas = false;
+            lastX = 0; // Son konumu sıfırla, böylece fare tekrar girdiğinde atlama olmaz
+            lastY = 0;
+        });
+
+        // Animasyon döngüsü: Canvas'ı yavaşça temizleyerek solma efekti yaratır
+        function animate() {
+            // Canvas'ı çok hafif şeffaf arka plan rengiyle doldur
+            // Bu, önceki çizimleri yavaşça soluklaştırır ve arka planla uyumlu bir solma sağlar
+            // Arka plan gradientinin ilk rengi olan #667eea'nın RGBA değeri kullanıldı
+            ctx.fillStyle = 'rgba(102, 126, 234, 0.05)'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            requestAnimationFrame(animate); // Bir sonraki kare için tekrar çağır
+        }
+
+        document.getElementById('startChatButton').addEventListener('click', () => {
+            // Yönlendirme işlemi eklendi
+            window.location.href = 'yzeka.html'; // yzka.html'den yzeka.html'ye düzeltildi
+        });
+    </script>
+</body>
+</html>

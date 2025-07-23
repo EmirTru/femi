@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Femi</title> <!-- Başlık "Femi" olarak güncellendi -->
+    <!-- Favicon eklendi -->
+    <link rel="icon" type="image/png" href="images/2.png">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Inter font for a clean look */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5; /* Hafif gri arka plan */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* İçeriği yukarıdan başlat */
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-x: hidden; /* Yatay kaydırmayı engelle */
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 800px; /* Maksimum genişlik */
+            margin-top: 50px; /* Üstten boşluk */
+            opacity: 0; /* Başlangıçta gizli */
+            transform: translateY(20px); /* Başlangıçta hafif aşağıda */
+            animation: fadeInSlideUpContainer 0.8s ease-out forwards; /* Animasyon uygula */
+        }
+        /* Ana konteyner için giriş animasyonu */
+        @keyframes fadeInSlideUpContainer {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .search-input {
+            border: 2px solid #e2e8f0; /* Hafif kenarlık */
+            transition: border-color 0.3s ease, box-shadow 0.3s ease; /* Gölge geçişi eklendi */
+        }
+        .search-input:focus {
+            border-color: #3b82f6; /* Odaklandığında mavi kenarlık */
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3); /* Daha belirgin gölge */
+        }
+        .search-button {
+            background-color: #3b82f6; /* Mavi düğme */
+            transition: background-color 0.3s ease, transform 0.1s ease, box-shadow 0.2s ease; /* Gölge geçişi eklendi */
+        }
+        .search-button:hover {
+            background-color: #2563eb; /* Hover'da daha koyu mavi */
+            transform: translateY(-1px); /* Hafif yukarı kayma efekti */
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15); /* Hover'da daha belirgin gölge */
+        }
+        .search-button:active {
+            transform: translateY(0); /* Tıklandığında eski haline dönme */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Tıklandığında daha az gölge */
+        }
+        .result-card {
+            background-color: #f8fafc; /* Sonuç kartı arka planı */
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.5s ease-out, transform 0.5s ease-out; /* Animasyon geçişleri eklendi */
+            /* Başlangıç animasyon durumu JS tarafından ayarlanacak */
+        }
+        .result-card:hover {
+            transform: translateY(-5px); /* Hover'da daha belirgin yukarı kayma */
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1); /* Hover'da daha belirgin gölge */
+        }
+        .result-title {
+            color: #1a202c; /* Başlık rengi */
+            font-weight: 600;
+        }
+        .result-url {
+            color: #3b82f6; /* URL rengi */
+            font-size: 0.9em;
+            word-break: break-all; /* Uzun URL'leri bölmek için */
+        }
+        .result-snippet {
+            color: #4a5568; /* Açıklama rengi */
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #3b82f6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        /* Mobile responsive adjustments */
+        @media (max-width: 640px) {
+            .container {
+                padding: 20px;
+                margin-top: 20px;
+            }
+            .flex-col-mobile {
+                flex-direction: column;
+            }
+            .search-button {
+                width: 100%;
+                margin-top: 10px;
+            }
+        }
+        /* Yeni ikon stilleri */
+        .icon {
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 8px; /* Metin ile ikon arasında boşluk */
+        }
+        .icon-search {
+            width: 20px; /* Büyüteç ikonu boyutu */
+            height: 20px;
+            fill: white; /* Beyaz renk */
+            margin-right: 8px; /* Metin ile ikon arasında boşluk */
+        }
+        /* Femi logosu ve kamera ikonu için stil */
+        .femi-logo-text {
+            font-size: 3rem; /* Femi yazısı boyutu */
+            font-weight: 800;
+            color: #1a202c;
+            margin-right: 10px; /* Metin ile ikon arasına boşluk */
+        }
+        .camera-icon-img {
+            height: 40px; /* Kamera ikonu yüksekliği */
+            width: auto; /* Genişliği otomatik ayarla */
+        }
+
+        /* Web sitesi görüntüleyici overlay stilleri */
+        .website-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7); /* Yarı şeffaf siyah arka plan */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000; /* Diğer her şeyin üstünde */
+            visibility: hidden; /* Başlangıçta gizli */
+            opacity: 0; /* Animasyon için başlangıç opaklığı */
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .website-overlay.active {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .website-modal {
+            background-color: #fff;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            height: 90%;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            transform: scale(0.8); /* Animasyon için başlangıç boyutu */
+            transition: transform 0.3s ease;
+        }
+
+        .website-overlay.active .website-modal {
+            transform: scale(1); /* Açılırken tam boyuta gel */
+        }
+
+        .website-modal-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: #333;
+            cursor: pointer;
+            z-index: 1001; /* Butonun iframe üzerinde görünmesi için */
+            transition: color 0.2s ease;
+        }
+
+        .website-modal-close:hover {
+            color: #f00;
+        }
+
+        .website-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 0 0 15px 15px; /* Alt köşeleri yuvarla */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-4xl font-extrabold text-center text-gray-800 mb-6 flex items-center justify-center">
+            <span class="femi-logo-text">Femi</span>
+            <img src="images/2.png" alt="Kamera İkonu" class="camera-icon-img" onerror="this.onerror=null;this.src='https://placehold.co/40x40/FFD700/000000/png?text=%E2%97%8F%E2%96%A0%E2%96%A0'">
+        </h1>
+        <div class="flex flex-col sm:flex-row gap-3 mb-6">
+            <input type="text" id="searchInput" placeholder="Femi'de ara..."
+                   class="flex-grow p-3 rounded-lg search-input text-gray-700">
+            <button id="searchButton"
+                    class="p-3 rounded-lg text-white font-semibold shadow-md search-button flex items-center justify-center">
+                <svg class="icon icon-search" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="currentColor"/>
+                </svg>
+                <span id="buttonText">Ara</span>
+                <div id="loadingSpinner" class="loading-spinner hidden ml-2"></div>
+            </button>
+        </div>
+
+        <!-- Yapay Zeka Yanıtı Bölümü -->
+        <div id="aiResponse" class="space-y-4 mb-6">
+            <!-- Yapay zeka yanıtı buraya gelecek -->
+        </div>
+
+        <div id="results" class="space-y-4">
+            <!-- Arama sonuçları buraya gelecek -->
+            <p id="noResultsMessage" class="text-center text-gray-500 hidden">Web sonuçları bulunamadı.</p>
+        </div>
+
+        <div id="errorMessage" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mt-4" role="alert">
+            <strong class="font-bold">Hata!</strong>
+            <span class="block sm:inline" id="errorText">Bir şeyler ters gitti. Lütfen tekrar deneyin.</span>
+        </div>
+    </div>
+
+    <!-- Web Sitesi Görüntüleyici Overlay -->
+    <div id="websiteOverlay" class="website-overlay">
+        <div class="website-modal">
+            <button id="closeWebsiteButton" class="website-modal-close">&times;</button>
+            <iframe id="websiteIframe" class="website-iframe"></iframe>
+        </div>
+    </div>
+
+    <script type="module">
+        // Firebase ve diğer global değişkenler Canvas ortamından sağlanır
+        // Bu değişkenler tanımlı değilse varsayılan değerler kullanılır
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        // initialAuthToken değişkeninin doğru atanmasını sağla
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // UI elementlerini al
+        const searchInput = document.getElementById('searchInput');
+        const searchButton = document.getElementById('searchButton');
+        const aiResponseDiv = document.getElementById('aiResponse'); // Yeni AI yanıtı div'i
+        const resultsDiv = document.getElementById('results');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const buttonText = document.getElementById('buttonText');
+        const noResultsMessage = document.getElementById('noResultsMessage');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+
+        // Web sitesi görüntüleyici elementleri
+        const websiteOverlay = document.getElementById('websiteOverlay');
+        const websiteIframe = document.getElementById('websiteIframe');
+        const closeWebsiteButton = document.getElementById('closeWebsiteButton');
+
+        // Hata mesajını göster
+        function displayError(message) {
+            errorText.textContent = message;
+            errorMessage.classList.remove('hidden');
+        }
+
+        // Web sitesi pop-up'ını göster
+        function showWebsitePopup(url) {
+            websiteIframe.src = url;
+            websiteOverlay.classList.add('active');
+        }
+
+        // Web sitesi pop-up'ını kapat
+        function closeWebsitePopup() {
+            websiteOverlay.classList.remove('active');
+            // iframe içeriğini temizle ve yüklemeyi durdur
+            websiteIframe.src = 'about:blank';
+        }
+
+        // Kapatma butonuna olay dinleyicisi ekle
+        closeWebsiteButton.addEventListener('click', closeWebsitePopup);
+
+        // Arama fonksiyonu
+        async function performSearch() {
+            console.log("performSearch called"); // Fonksiyonun çağrıldığını kontrol etmek için
+            const query = searchInput.value.trim();
+            if (!query) {
+                displayError("Lütfen bir arama terimi girin.");
+                // Buton durumunu sıfırla
+                searchButton.disabled = false;
+                buttonText.classList.remove('hidden');
+                loadingSpinner.classList.add('hidden');
+                return;
+            }
+
+            // Arama başladığında UI güncellemeleri
+            searchButton.disabled = true;
+            buttonText.classList.add('hidden');
+            loadingSpinner.classList.remove('hidden');
+            resultsDiv.innerHTML = ''; // Önceki web sonuçlarını temizle
+            aiResponseDiv.innerHTML = ''; // Önceki AI yanıtını temizle
+            noResultsMessage.classList.add('hidden');
+            errorMessage.classList.add('hidden');
+
+            try {
+                // 1. Yapay Zeka Yanıtı Oluşturma (Gemini API kullanarak)
+                aiResponseDiv.innerHTML = `
+                    <div class="result-card bg-blue-50 border-blue-200">
+                        <h3 class="result-title text-blue-800 text-xl mb-2">✨ Yapay Zeka Yanıtı</h3>
+                        <p class="text-center text-gray-500">Yapay zeka yanıtı oluşturuluyor...</p>
+                    </div>
+                `;
+                let chatHistory = [];
+                // Yapay zekaya yeni yönergeler eklendi:
+                // - Kısa ve öz ol.
+                // - Kim olduğu sorulursa "Ben Femi." diye yanıt ver.
+                // - Görsel oluşturma yeteneği olmadığını belirt.
+                // - Web sitesi açma/ziyaret etme komutu aldığında sadece URL'yi ver.
+                // - "x aç" komutu için "x.com" URL'sini açıkça belirt.
+                // - Eğer kullanıcının girişi bir selamlaşma veya basit bir sohbet başlangıcıysa (örn: "Merhaba", "Selam", "Nasılsın", "Dostum"), kısa ve samimi bir şekilde selamla veya yanıt ver (örn: "Merhaba!", "Selam!", "İyiyim, sen nasılsın?", "Merhaba Emir!").
+                // - Diğer durumlarda arama sorgusuna kısa, bilgilendirici ve özet yanıt ver.
+                chatHistory.push({ role: "user", parts: [{ text: `Çok uzun yanıtlar verme, kısa ve öz ol. Eğer kim olduğun sorulursa, "Ben Femi." diye yanıt ver. Görsel oluşturma veya medya işleme yeteneğim olmadığını unutma. Eğer bir web sitesi açma veya ziyaret etme komutu alırsan (örn: "YouTube aç", "Google'a git", "slow roads aç", "x aç"), yanıtın sadece o web sitesinin URL'si olsun (örn: "https://www.youtube.com", "https://www.google.com", "https://slowroads.io", "https://x.com"). Başka hiçbir metin ekleme. Sadece URL'yi ver. Eğer kullanıcının girişi bir selamlaşma veya basit bir sohbet başlangıcıysa (örn: "Merhaba", "Selam", "Nasılsın", "Dostum"), kısa ve samimi bir şekilde selamla veya yanıt ver (örn: "Merhaba!", "Selam!", "İyiyim, sen nasılsın?", "Merhaba Emir!"). Diğer durumlarda, kullanıcının arama sorgusuna kısa, bilgilendirici ve özet bir yanıt ver: "${query}"` }] });
+                const payload = { contents: chatHistory };
+                // Kendi Gemini API anahtarını buraya yapıştır.
+                const apiKey = "AIzaSyAng0nZ5N8ZyQmNLkVhf0HZbziVXBa_Xbw";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        let aiText = result.candidates[0].content.parts[0].text;
+
+                        // Yapay zeka yanıtında URL ara
+                        // Hem http/https hem de www ile başlayan URL'leri, hem de sadece domain.tld formatındaki URL'leri yakala
+                        const urlRegex = /(https?:\/\/[^\s]+)|((?:www\.)?[a-z0-9-]+\.[a-z]{2,6}(?:\/[^\s]*)?)/gi;
+                        const foundUrls = aiText.match(urlRegex);
+
+                        let suggestedUrl = null;
+                        if (foundUrls && foundUrls.length > 0) {
+                            suggestedUrl = foundUrls[0];
+                            // Eğer URL http veya https ile başlamıyorsa https ekle
+                            if (!suggestedUrl.startsWith('http://') && !suggestedUrl.startsWith('https://')) {
+                                suggestedUrl = 'https://' + suggestedUrl;
+                            }
+                            console.log("Detected URL:", suggestedUrl); // Tespit edilen URL'yi konsola yazdır
+
+                            // iframe'de gösterilemeyecek bilinen siteler
+                            const blockedDomains = ['youtube.com', 'google.com', 'facebook.com', 'instagram.com', 'twitter.com', 'x.com', 'spotify.com'];
+                            const isBlocked = blockedDomains.some(domain => suggestedUrl.includes(domain));
+
+                            // AI yanıtını her zaman göster
+                            aiResponseDiv.innerHTML = `
+                                <div class="result-card bg-blue-50 border-blue-200">
+                                    <h3 class="result-title text-blue-800 text-xl mb-2">✨ Yapay Zeka Yanıtı</h3>
+                                    <p class="result-snippet text-blue-700">${aiText}</p>
+                                </div>
+                            `;
+
+                            // Eğer site engelliyse yeni sekmede aç, yoksa pop-up'ta göster
+                            if (isBlocked) {
+                                let countdown = 3;
+                                aiResponseDiv.innerHTML += `
+                                    <p id="countdownMessage" class="mt-3 text-gray-600">Bu site güvenlik politikaları nedeniyle önizlenemiyor. Yeni sekmede açılıyor... ${countdown} saniye içinde.</p>
+                                `;
+                                const countdownElement = document.getElementById('countdownMessage');
+
+                                const interval = setInterval(() => {
+                                    countdown--;
+                                    if (countdown > 0) {
+                                        countdownElement.textContent = `Bu site güvenlik politikaları nedeniyle önizlenemiyor. Yeni sekmede açılıyor... ${countdown} saniye içinde.`;
+                                    } else {
+                                        clearInterval(interval);
+                                        window.open(suggestedUrl, '_blank');
+                                        countdownElement.textContent = `Bu site güvenlik politikaları nedeniyle yeni sekmede açıldı.`;
+                                    }
+                                }, 1000);
+
+                            } else {
+                                showWebsitePopup(suggestedUrl); // URL bulunursa, doğrudan pop-up'ı göster
+                            }
+                        } else {
+                            aiResponseDiv.innerHTML = `
+                                <div class="result-card bg-blue-50 border-blue-200">
+                                    <h3 class="result-title text-blue-800 text-xl mb-2">✨ Yapay Zeka Yanıtı</h3>
+                                    <p class="result-snippet text-blue-700">${aiText}</p>
+                                </div>
+                            `;
+                        }
+                    } else {
+                        aiResponseDiv.innerHTML = '<p class="text-center text-gray-500">Yapay zeka yanıtı alınamadı.</p>';
+                    }
+                } catch (aiError) {
+                    console.error("Yapay zeka yanıtı hatası:", aiError);
+                    // API çağrısı başarısız olursa sahte yanıt göster
+                    aiResponseDiv.innerHTML = `
+                        <div class="result-card bg-blue-50 border-blue-200">
+                            <h3 class="result-title text-blue-800 text-xl mb-2">✨ Yapay Zeka Yanıtı (Mock)</h3>
+                            <p class="result-snippet text-blue-700">Merhaba! Ben Femi. Sorgunla ilgili bilgi veremiyorum çünkü yapay zeka servisine erişilemiyor. Lütfen API anahtarını kontrol et ve daha sonra tekrar dene. Eğer bir web sitesi önerisi bekliyorsan, şu an için doğrudan açamıyorum.</p>
+                        </div>
+                    `;
+                }
+
+                // 2. Web Arama Sonuçları (google_search aracı kullanarak)
+                if (typeof google_search !== 'undefined' && typeof google_search.search === 'function') {
+                    const searchResults = await google_search.search(queries=[query, query + " search"]);
+
+                    if (searchResults && searchResults.length > 0 && searchResults[0].results) {
+                        const results = searchResults[0].results;
+                        if (results.length === 0) {
+                            noResultsMessage.classList.remove('hidden');
+                        } else {
+                            results.forEach((result, index) => {
+                                const resultCard = document.createElement('div');
+                                // Animasyon için başlangıç sınıfları eklendi
+                                resultCard.className = 'result-card opacity-0 translate-y-5 transition-all duration-500 ease-out';
+
+                                const title = document.createElement('h3');
+                                title.className = 'result-title text-lg mb-1';
+                                title.textContent = result.source_title || 'Başlık Yok';
+
+                                const url = document.createElement('a');
+                                url.className = 'result-url block mb-2';
+                                url.href = result.url || '#';
+                                url.target = '_blank'; // Yeni sekmede aç
+                                url.textContent = result.url || 'URL Yok';
+
+                                const snippet = document.createElement('p');
+                                snippet.className = 'result-snippet';
+                                snippet.textContent = result.snippet || 'Açıklama mevcut değil.';
+
+                                resultCard.appendChild(title);
+                                resultCard.appendChild(url);
+                                resultCard.appendChild(snippet);
+                                resultsDiv.appendChild(resultCard);
+
+                                // Her kartın animasyonunu hafif gecikmeyle başlat
+                                setTimeout(() => {
+                                    resultCard.classList.remove('opacity-0', 'translate-y-5');
+                                    resultCard.classList.add('opacity-100', 'translate-y-0');
+                                }, index * 100); // Her kart için 100ms gecikme
+                            });
+                        }
+                    } else {
+                        noResultsMessage.classList.remove('hidden');
+                    }
+                } else {
+                    resultsDiv.innerHTML = '';
+                }
+
+            } catch (mainError) {
+                console.error("Genel arama hatası:", mainError);
+                displayError(mainError.message || "Arama sırasında genel bir hata oluştu. Lütfen tekrar deneyin.");
+            } finally {
+                // Arama bittiğinde UI güncellemeleri
+                searchButton.disabled = false;
+                buttonText.classList.remove('hidden');
+                loadingSpinner.classList.add('hidden');
+                // Arama kutucuğunu sıfırla
+                searchInput.value = '';
+                console.log("performSearch finished, button re-enabled."); // Fonksiyonun bittiğini kontrol etmek için
+            }
+        }
+
+        // Arama düğmesine tıklama olayını dinle
+        searchButton.addEventListener('click', performSearch);
+
+        // Enter tuşuna basıldığında arama yap
+        searchInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                performSearch();
+            }
+        });
+    </script>
+</body>
+</html>
