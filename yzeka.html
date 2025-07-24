@@ -324,6 +324,31 @@
         .control-button.inactive:hover {
             background-color: #bbbbbb;
         }
+
+        /* Voice selection dropdown style */
+        .voice-select {
+            padding: 8px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            background-color: #ffffff;
+            color: #333;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            -webkit-appearance: none; /* Remove default dropdown arrow for better styling */
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url('data:image/svg+xml;utf8,<svg fill="%234a90e2" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            background-size: 20px;
+        }
+
+        .voice-select:focus {
+            border-color: #3b82f6;
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -372,6 +397,13 @@
             <button id="toggleRecognitionButton" class="control-button">
                 <i class="fas fa-microphone fa-2x"></i> <!-- Microphone icon -->
             </button>
+        </div>
+
+        <!-- Voice Selection Dropdown -->
+        <div class="flex justify-center mt-4">
+            <select id="voiceSelect" class="voice-select w-full max-w-xs">
+                <!-- Voices will be populated here by JavaScript -->
+            </select>
         </div>
     </div>
 
@@ -436,6 +468,7 @@
         let currentPhraseIndex = 0; // phrasesToSpeak dizisindeki mevcut indeks
         let awaitingVoiceQuery = false; // "Yapay Zeka" dedikten sonra sesli sorgu bekleyip beklemediğimizi gösteren bayrak
         let voiceCommandTimeoutId; // Sesli sorgu bekleme zamanlayıcısının ID'si
+        let selectedVoice = null; // Seçilen ses nesnesini tutar
 
         // Yeni kontrol bayrakları
         let isSpeechEnabled = true; // Metin okuma çıktısı için
@@ -446,6 +479,7 @@
         const toggleSpeechButton = document.getElementById('toggleSpeechButton');
         const toggleSpeechPopupButton = document.getElementById('toggleSpeechPopupButton');
         const toggleRecognitionButton = document.getElementById('toggleRecognitionButton');
+        const voiceSelect = document.getElementById('voiceSelect'); // Ses seçme dropdown'ı
 
         // Buton görsellerini güncelleme fonksiyonu
         function updateButtonStates() {
@@ -629,6 +663,9 @@
 
                 currentUtterance = new SpeechSynthesisUtterance(phrase);
                 currentUtterance.lang = 'tr-TR'; // Türkçe dilini sağla
+                if (selectedVoice) {
+                    currentUtterance.voice = selectedVoice; // Seçilen sesi ayarla
+                }
 
                 currentUtterance.onend = () => {
                     // Bu geri arama, *konuşmanın* bittiği anlamına gelir.
@@ -947,6 +984,18 @@
             return false; // Komut özel olarak işlenmedi
         }
 
+        // Yeni fonksiyon: Cihazdan tarih ve saati al
+        function getDateTimeFromDevice() {
+            const now = new Date();
+            const optionsDate = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const optionsTime = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
+
+            const dateStr = now.toLocaleDateString('tr-TR', optionsDate);
+            const timeStr = now.toLocaleTimeString('tr-TR', optionsTime);
+
+            return `Şu anki tarih: ${dateStr} ve saat: ${timeStr}.`;
+        }
+
 
         // Arama fonksiyonu
         async function performSearch(voiceQuery = null) { // voiceQuery parametresi eklendi
@@ -960,16 +1009,6 @@
                 return;
             }
 
-            // Arama başladığında UI güncellemeleri
-            searchButton.disabled = true;
-            buttonText.classList.add('hidden');
-            loadingSpinner.classList.remove('hidden');
-            resultsDiv.innerHTML = ''; // Önceki web sonuçlarını temizle
-            aiResponseDiv.innerHTML = ''; // Önceki AI yanıtını temizle
-            noResultsMessage.classList.add('hidden');
-            errorMessage.classList.add('hidden');
-            voiceStatus.textContent = `"${query}" için yanıt aranıyor...`;
-            
             // Easter Egg kontrolü
             if (query.toLowerCase() === "emirtru") {
                 const easterEggText = "O benim sahibimin nicki sen sahibim değilsin!";
@@ -989,7 +1028,16 @@
                 return; // Easter Egg için daha fazla işlem yapma
             }
 
-
+            // Arama başladığında UI güncellemeleri
+            searchButton.disabled = true;
+            buttonText.classList.add('hidden');
+            loadingSpinner.classList.remove('hidden');
+            resultsDiv.innerHTML = ''; // Önceki web sonuçlarını temizle
+            aiResponseDiv.innerHTML = ''; // Önceki AI yanıtını temizle
+            noResultsMessage.classList.add('hidden');
+            errorMessage.classList.add('hidden');
+            voiceStatus.textContent = `"${query}" için yanıt aranıyor...`;
+            
             speak("Yanıt aranıyor.");
 
 
@@ -1001,14 +1049,20 @@
                         <p class="text-center text-gray-500">Yapay zeka yanıtı oluşturuluyor...</p>
                     </div>
                 `;
+
                 let chatHistory = [];
-                // Yapay zekaya yeni yönergeler eklendi:
-                // - Çok uzun yanıtlar verme, kısa ve öz ol.
-                // - Eğer kim olduğun sorulursa, "Ben Femi." diye yanıt ver.
-                // - Görsel oluşturma veya medya işleme yeteneği olmadığını unutma.
-                // - Eğer bir web sitesi açma veya ziyaret etme komutu alırsan (örn: "YouTube aç", "Google'a git", "slow roads aç", "x aç"), yanıtın sadece o web sitesinin URL'si olsun (örn: "https://www.youtube.com", "https://www.google.com", "https://slowroads.io", "https://x.com"). Başka hiçbir metin ekleme. Sadece URL'yi ver.
-                // - Diğer durumlarda, kullanıcının arama sorgusuna kısa, bilgilendirici ve özet bir yanıt ver.
-                chatHistory.push({ role: "user", parts: [{ text: `Çok uzun yanıtlar verme, kısa ve öz ol. Eğer kim olduğun sorulursa, "Ben Femi." diye yanıt ver. Görsel oluşturma veya medya işleme yeteneğim olmadığını unutma. Eğer bir web sitesi açma veya ziyaret etme komutu alırsan (örn: "YouTube aç", "Google'a git", "slow roads aç", "x aç"), yanıtın sadece o web sitesinin URL'si olsun (örn: "https://www.youtube.com", "https://www.google.com", "https://slowroads.io", "https://x.com"). Başka hiçbir metin ekleme. Sadece URL'yi ver. Kullanıcının arama sorgusuna kısa, bilgilendirici ve özet bir yanıt ver: "${query}"` }] });
+                let promptText = `Çok uzun yanıtlar verme, kısa ve öz ol. Eğer kim olduğun sorulursa, "Ben Femi." diye yanıt ver. Görsel oluşturma veya medya işleme yeteneğim olmadığını unutma. Eğer bir web sitesi açma veya ziyaret etme komutu alırsan (örn: "YouTube aç", "Google'a git", "slow roads aç", "x aç"), yanıtın sadece o web sitesinin URL'si olsun (örn: "https://www.youtube.com", "https://www.google.com", "https://slowroads.io", "https://x.com"). Başka hiçbir metin ekleme. Sadece URL'yi ver. Kullanıcının arama sorgusuna kısa, bilgilendirici ve özet bir yanıt ver: "${query}"`;
+
+                // Tarih/saat ile ilgili bir sorgu olup olmadığını kontrol et
+                const lowerCaseQuery = query.toLowerCase();
+                if (lowerCaseQuery.includes("saat kaç") || lowerCaseQuery.includes("bugün günlerden ne") || lowerCaseQuery.includes("bugünün tarihi ne") || lowerCaseQuery.includes("tarih ve saat")) {
+                    const dateTimeInfo = getDateTimeFromDevice(); // Cihazdan tarih/saat al
+                    if (dateTimeInfo) {
+                        promptText += ` ${dateTimeInfo} Bu bilgiyi kullanarak soruyu yanıtla.`;
+                    }
+                }
+
+                chatHistory.push({ role: "user", parts: [{ text: promptText }] });
                 const payload = { contents: chatHistory };
                 // Kendi Gemini API anahtarını buraya yapıştır.
                 const apiKey = "AIzaSyAng0nZ5N8ZyQmNLkVhf0HZbziVXBa_Xbw";
@@ -1173,10 +1227,51 @@
             }
         });
 
+        // Sesleri doldurma ve varsayılanı ayarlama
+        function populateVoiceList() {
+            const voices = speechSynthesis.getVoices();
+            voiceSelect.innerHTML = ''; // Mevcut seçenekleri temizle
+
+            // Türkçe veya İngilizce sesleri tercih et
+            let defaultVoice = null;
+            voices.forEach(voice => {
+                const option = document.createElement('option');
+                option.textContent = `${voice.name} (${voice.lang})`;
+                option.value = voice.name;
+                voiceSelect.appendChild(option);
+
+                // Türkçe veya İngilizce bir ses bulup varsayılan olarak ayarla
+                if (!defaultVoice && (voice.lang.startsWith('tr') || voice.lang.startsWith('en'))) {
+                    defaultVoice = voice;
+                }
+            });
+
+            // Eğer varsayılan bir ses bulunduysa, onu seçili yap
+            if (defaultVoice) {
+                voiceSelect.value = defaultVoice.name;
+                selectedVoice = defaultVoice;
+            } else if (voices.length > 0) {
+                // Hiç Türkçe veya İngilizce ses yoksa ilk sesi seç
+                voiceSelect.value = voices[0].name;
+                selectedVoice = voices[0];
+            }
+        }
+
+        // Ses listesi yüklendiğinde veya değiştiğinde populateVoiceList'i çağır
+        speechSynthesis.onvoiceschanged = populateVoiceList;
+
         // Sayfa yüklendiğinde başlangıç durumu güncellemesi
         window.addEventListener('load', () => {
             initializeSpeechRecognition();
             updateButtonStates(); // Başlangıç buton durumlarını ayarla
+            populateVoiceList(); // Ses listesini doldur
+        });
+
+        // Ses seçimi değiştiğinde
+        voiceSelect.addEventListener('change', () => {
+            const voices = speechSynthesis.getVoices();
+            selectedVoice = voices.find(voice => voice.name === voiceSelect.value);
+            console.log("Seçilen ses:", selectedVoice ? selectedVoice.name : "Yok");
         });
     </script>
 </body>
