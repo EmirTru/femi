@@ -60,7 +60,7 @@
             box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15); /* More prominent shadow on hover */
         }
         .search-button:active {
-            transform: translateY(0); /* Return to original state on click */
+            transform: translateY(0);
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Less shadow on click */
         }
         .result-card {
@@ -736,7 +736,6 @@
                 } else if (permissionStatus.state === 'denied') {
                     // İzin reddedilirse, kullanıcıya manuel olarak etkinleştirmesini söyle
                     voiceStatus.textContent = "Mikrofon izni reddedildi. Sesli komutlar kullanılamıyor. Lütfen tarayıcı ayarlarınızdan manuel olarak etkinleştirin.";
-                    // Bu senaryoda "Speech synthesis error" hatasını önlemek için speak() çağrısı kaldırıldı
                 } else {
                     // İzin durumu 'prompt' veya 'undefined' ise, izin iste
                     voiceStatus.textContent = "Mikrofon izni bekleniyor...";
@@ -748,13 +747,11 @@
                         .catch((err) => {
                             console.error("Mikrofon izni reddedildi veya hata oluştu:", err);
                             voiceStatus.textContent = "Mikrofon izni reddedildi. Sesli komutlar kullanılamıyor. Lütfen tarayıcı ayarlarınızdan manuel olarak etkinleştirin.";
-                            // Bu senaryoda "Speech synthesis error" hatasını önlemek için speak() çağrısı kaldırıldı
                         });
                 }
             }).catch((err) => {
                 console.error("Mikrofon izin durumu sorgulanırken hata oluştu:", err);
                 voiceStatus.textContent = "Mikrofon izin durumu kontrol edilemedi. Lütfen tarayıcı ayarlarınızı kontrol edin.";
-                // Bu senaryoda "Speech synthesis error" hatasını önlemek için speak() çağrısı kaldırıldı
             });
 
             function startRecognition() {
@@ -826,12 +823,15 @@
                             voiceStatus.textContent = `Algılandı: "${queryToProcess}" işleniyor...`;
                             searchInput.value = queryToProcess;
                             performSearch(queryToProcess);
+                            // Sorgu hemen işlendiği için "Dinliyorum" demeye veya ses çalmaya gerek yok.
+                            awaitingVoiceQuery = false; // Bu durumda beklemeyi sıfırla
                         } else {
                             // Sadece "Yapay Zeka" söylendi veya cümlenin sonunda
+                            // Şimdi "Dinliyorum" desin ve sesi çalsın, ardından bir sonraki sorguyu beklesin.
                             awaitingVoiceQuery = true;
-                            voiceStatus.textContent = "Yapay Zeka algılandı. Lütfen şimdi sorunuzu söyleyin.";
-                            speak("Lütfen şimdi sorunuzu söyleyin.");
-                            triggerSound.play(); // Play the sound when trigger phrase is detected
+                            voiceStatus.textContent = "Yapay Zeka algılandı. Dinliyorum.";
+                            speak("Dinliyorum."); // Mesaj değiştirildi
+                            triggerSound.play(); // Tetikleyici cümle algılandığında sesi çal
                             searchInput.value = ''; // Yeni sorgu için girişi temizle
                             voiceCommandTimeoutId = setTimeout(() => {
                                 if (awaitingVoiceQuery) { // Sadece hala bekleniyorsa sıfırla
@@ -843,7 +843,7 @@
                             }, 5000); // Sorguyu söylemek için 5 saniye
                         }
                     } else {
-                        // Tetikleyici cümle yoksa normal sorgu
+                        // Tetikleyici cümle yoksa ve bir sorgu beklemiyorsak normal sorgu
                         const queryToProcess = lowerCaseTranscript;
                         voiceStatus.textContent = `Algılandı: "${queryToProcess}" işleniyor...`;
                         searchInput.value = queryToProcess;
@@ -855,7 +855,6 @@
                 recognition.onerror = (event) => {
                     console.error("Ses tanıma hatası:", event.error);
                     voiceStatus.textContent = `Hata: ${event.error}. Lütfen mikrofon iznini kontrol edin.`;
-                    // speak("Ses tanıma hatası oluştu."); // Bu satır kaldırıldı
                     // Hata durumunda bile bir süre sonra durum mesajını sıfırla
                     if (statusTimeout) {
                         clearTimeout(statusTimeout);
