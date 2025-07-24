@@ -6,6 +6,8 @@
     <title>Femi</title>
     <link rel="icon" type="image/png" href="images/2.png">
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome CDN for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         /* Inter font for a clean look */
         body {
@@ -50,7 +52,7 @@
         }
         .search-button {
             background-color: #3b82f6; /* Blue button */
-            transition: background-color 0.3s ease, transform 0.1s ease, box-shadow 0.2s ease; /* Added shadow transition */
+            transition: background-color 0.3s ease, transform 0.1s ease, box-shadow 0.2s ease; /* Gölge geçişi eklendi */
         }
         .search-button:hover {
             background-color: #2563eb; /* Darker blue on hover */
@@ -292,13 +294,43 @@
                 right: 15px;
             }
         }
+
+        /* Control Button Styles */
+        .control-button {
+            background-color: #4a90e2; /* Blue */
+            color: white;
+            border-radius: 50%; /* Circular button */
+            width: 60px; /* Fixed size */
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease, transform 0.1s ease, box-shadow 0.2s ease;
+        }
+        .control-button:hover {
+            background-color: #357ABD; /* Darker blue */
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+        }
+        .control-button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .control-button.inactive {
+            background-color: #cccccc; /* Gray for inactive */
+            opacity: 0.7;
+        }
+        .control-button.inactive:hover {
+            background-color: #bbbbbb;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1 class="text-4xl font-extrabold text-center text-gray-800 mb-6 flex items-center justify-center">
             <span class="femi-logo-text">Femi</span>
-            <img src="images/2.png" alt="Camera Icon" class="camera-icon-img" onerror="this.onerror=null;this.src='https://placehold.co/40x40/FFD700/000000/png?text=%E2%97%8F%E2%96%A0%E2%96%A0'">
+            <img src="images/2.png" alt="Kamera İkonu" class="camera-icon-img" onerror="this.onerror=null;this.src='https://placehold.co/40x40/FFD700/000000/png?text=%E2%97%8F%E2%96%A0%E2%96%A0'">
         </h1>
         <div class="flex flex-col sm:flex-row gap-3 mb-6">
             <input type="text" id="searchInput" placeholder="Femi'de ara..."
@@ -313,10 +345,13 @@
             </button>
         </div>
 
+        <!-- Yapay Zeka Yanıtı Bölümü -->
         <div id="aiResponse" class="space-y-4 mb-6">
-            </div>
+            <!-- Yapay zeka yanıtı buraya gelecek -->
+        </div>
 
         <div id="results" class="space-y-4">
+            <!-- Arama sonuçları buraya gelecek -->
             <p id="noResultsMessage" class="text-center text-gray-500 hidden">Web sonuçları bulunamadı.</p>
         </div>
 
@@ -325,11 +360,25 @@
             <span class="block sm:inline" id="errorText">Bir şeyler ters gitti. Lütfen tekrar deneyin.</span>
         </div>
         <div id="voiceStatus" class="text-center mt-4">Femi'yi bekliyor...</div>
+
+        <!-- New Buttons Container -->
+        <div class="flex justify-center gap-4 mt-8">
+            <button id="toggleSpeechButton" class="control-button">
+                <i class="fas fa-volume-up fa-2x"></i> <!-- Speaker icon -->
+            </button>
+            <button id="toggleSpeechPopupButton" class="control-button">
+                <i class="fas fa-eye fa-2x"></i> <!-- Eye icon -->
+            </button>
+            <button id="toggleRecognitionButton" class="control-button">
+                <i class="fas fa-microphone fa-2x"></i> <!-- Microphone icon -->
+            </button>
+        </div>
     </div>
 
+    <!-- Web Sitesi Görüntüleyici Overlay -->
     <div id="websiteOverlay" class="website-overlay">
         <div class="website-modal">
-            <button id="closeWebsiteButton" class="website-modal-close">×</button>
+            <button id="closeWebsiteButton" class="website-modal-close">&times;</button>
             <iframe id="websiteIframe" class="website-iframe"></iframe>
         </div>
     </div>
@@ -375,6 +424,103 @@
         let statusTimeout; // Timeout for clearing status message
         let currentUtterance = null; // To hold the current speech utterance object
         let displayTimeout = null; // Timeout for sentence display duration
+        let isAIResponding = false; // Flag to indicate if AI is currently speaking
+        let isRecognitionActive = false; // Flag to track if recognition is truly active
+        let phrasesToSpeak = []; // Array to hold phrases for sequential speaking
+        let currentPhraseIndex = 0; // Current index in phrasesToSpeak array
+
+        // New control flags
+        let isSpeechEnabled = true; // For text-to-speech output
+        let isSpeechPopupVisible = true; // For the large text display popup
+        let isRecognitionEnabled = true; // For speech-to-text recognition
+
+        // Get new button elements
+        const toggleSpeechButton = document.getElementById('toggleSpeechButton');
+        const toggleSpeechPopupButton = document.getElementById('toggleSpeechPopupButton');
+        const toggleRecognitionButton = document.getElementById('toggleRecognitionButton');
+
+        // Function to update button visuals
+        function updateButtonStates() {
+            toggleSpeechButton.classList.toggle('inactive', !isSpeechEnabled);
+            toggleSpeechPopupButton.classList.toggle('inactive', !isSpeechPopupVisible);
+            toggleRecognitionButton.classList.toggle('inactive', !isRecognitionEnabled);
+
+            // Update icons based on state
+            toggleSpeechButton.querySelector('i').className = isSpeechEnabled ? 'fas fa-volume-up fa-2x' : 'fas fa-volume-mute fa-2x';
+            toggleSpeechPopupButton.querySelector('i').className = isSpeechPopupVisible ? 'fas fa-eye fa-2x' : 'fas fa-eye-slash fa-2x';
+            toggleRecognitionButton.querySelector('i').className = isRecognitionEnabled ? 'fas fa-microphone fa-2x' : 'fas fa-microphone-slash fa-2x';
+        }
+
+        // Toggle functions for each service
+        function toggleSpeechOutput() {
+            isSpeechEnabled = !isSpeechEnabled;
+            updateButtonStates();
+            if (!isSpeechEnabled) {
+                speechSynthesis.cancel(); // Stop any ongoing speech
+                clearTimeout(displayTimeout); // Clear display timeout
+                speechPopup.classList.remove('active'); // Hide popup immediately
+                speechText.textContent = ''; // Clear text
+                speechText.classList.remove('slide-in', 'slide-out');
+                // If AI was speaking and speech is disabled, restart recognition if appropriate
+                if (isAIResponding) {
+                    isAIResponding = false; // Mark AI as finished
+                    setTimeout(() => {
+                        if (recognition && !isRecognitionActive && isRecognitionEnabled) {
+                            recognition.start();
+                            voiceStatus.textContent = "Dinleniyor...";
+                        }
+                    }, 200);
+                }
+            }
+        }
+
+        function toggleSpeechPopupVisibility() {
+            isSpeechPopupVisible = !isSpeechPopupVisible;
+            updateButtonStates();
+            if (!isSpeechPopupVisible) {
+                speechSynthesis.cancel(); // Stop any ongoing speech if popup is hidden
+                clearTimeout(displayTimeout); // Clear display timeout
+                speechPopup.classList.remove('active'); // Hide popup immediately
+                speechText.textContent = ''; // Clear text
+                speechText.classList.remove('slide-in', 'slide-out');
+                // If AI was speaking and popup is manually hidden, ensure recognition restarts if appropriate
+                if (isAIResponding) {
+                    isAIResponding = false; // Mark AI as finished
+                    setTimeout(() => {
+                        if (recognition && !isRecognitionActive && isRecognitionEnabled) {
+                            recognition.start();
+                            voiceStatus.textContent = "Dinleniyor...";
+                        }
+                    }, 200);
+                }
+            }
+            // If it becomes true, `speak` function will handle showing it next time.
+        }
+
+        function toggleRecognitionService() {
+            isRecognitionEnabled = !isRecognitionEnabled;
+            updateButtonStates();
+            if (isRecognitionEnabled) {
+                // If recognition was previously stopped and not active, try to start it
+                if (recognition && !isRecognitionActive && !isAIResponding) {
+                    recognition.start();
+                    voiceStatus.textContent = "Dinleniyor...";
+                } else if (isAIResponding) {
+                    voiceStatus.textContent = "Femi yanıt veriyor..."; // Keep status if AI is speaking
+                }
+            } else {
+                // Stop recognition if it's currently active
+                if (recognition && isRecognitionActive) {
+                    recognition.abort(); // Use abort to stop immediately
+                    voiceStatus.textContent = "Ses tanıma kapalı.";
+                }
+            }
+        }
+
+        // Add event listeners to buttons
+        toggleSpeechButton.addEventListener('click', toggleSpeechOutput);
+        toggleSpeechPopupButton.addEventListener('click', toggleSpeechPopupVisibility);
+        toggleRecognitionButton.addEventListener('click', toggleRecognitionService);
 
         // Show error message
         function displayError(message) {
@@ -391,7 +537,7 @@
         // Close website pop-up
         function closeWebsitePopup() {
             websiteOverlay.classList.remove('active');
-            // Clear iframe content and stop loading
+            // iframe içeriğini temizle ve yüklemeyi durdur
             websiteIframe.src = 'about:blank';
         }
 
@@ -400,9 +546,20 @@
 
         // Text-to-speech function
         function speak(text) {
-            if (!('speechSynthesis' in window)) {
-                console.warn("Your browser does not support SpeechSynthesis.");
-                return;
+            if (!isSpeechEnabled) {
+                console.log("Speech output is disabled by user.");
+                // If speech is disabled, but recognition was stopped because AI was speaking, restart it here.
+                // This handles the case where user disables speech mid-search.
+                if (isAIResponding) {
+                    isAIResponding = false; // Mark AI as finished
+                    setTimeout(() => {
+                        if (recognition && !isRecognitionActive && isRecognitionEnabled) {
+                            recognition.start();
+                            voiceStatus.textContent = "Dinleniyor...";
+                        }
+                    }, 200);
+                }
+                return; // Do not speak if disabled
             }
 
             // Stop and clear previous speeches
@@ -413,92 +570,102 @@
             }
             clearTimeout(displayTimeout); // Clear previous display timer
 
+            // Stop speech recognition before speaking
+            if (recognition && isRecognitionActive) { // Only abort if recognition is actually active
+                recognition.abort(); // Immediately stop current recognition session
+                isRecognitionActive = false; // Update flag
+            }
+            isAIResponding = true; // Set flag that AI is speaking
+            voiceStatus.textContent = "Femi yanıt veriyor..."; // Update status
+
             const urlRegex = /(https?:\/\/[^\s]+)|((?:www\.)?[a-z0-9-]+\.[a-z]{2,6}(?:\/[^\s]*)?)/gi;
             const filteredText = text.replace(urlRegex, '');
 
             // Split into phrases (by punctuation or multiple spaces)
-            const phrases = filteredText.split(/(?<=[.!?])\s+|\s{2,}/).filter(p => p.trim() !== '');
-            
-            let currentPhraseIndex = 0;
+            phrasesToSpeak = filteredText.split(/(?<=[.!?])\s+|\s{2,}/).filter(p => p.trim() !== '');
+            currentPhraseIndex = 0; // Reset phrase index for new speech
 
-            // Function to speak and display a single phrase
-            function speakSinglePhrase(phrase) {
-                // Clear previous animations
-                speechText.classList.remove('slide-in', 'slide-out');
-                speechText.textContent = phrase;
-                speechText.classList.add('slide-in'); // Apply slide-in for the new phrase
+            // Only show the popup initially if it's enabled
+            if (isSpeechPopupVisible) {
+                speechPopup.classList.add('active');
+            }
+            processNextPhrase(); // Start with the first phrase
+        }
 
-                // Calculate display duration based on word count (1 second per word)
+        // Function to manage the sequence of phrases and animations
+        function processNextPhrase() {
+            if (currentPhraseIndex < phrasesToSpeak.length) {
+                const phrase = phrasesToSpeak[currentPhraseIndex].trim();
+                currentPhraseIndex++;
+
+                // Only update speechText and apply animations if popup is visible
+                if (isSpeechPopupVisible) {
+                    speechText.classList.remove('slide-in', 'slide-out');
+                    speechText.textContent = phrase;
+                    speechText.classList.add('slide-in');
+                } else {
+                    speechText.textContent = ''; // Ensure text is cleared if popup is not visible
+                }
+
                 const words = phrase.split(/\s+/).filter(word => word.length > 0);
-                const displayDuration = Math.max(words.length * 1000, 1500); // Minimum 1.5 seconds
-
-                let speechEnded = false;
-                let displayTimeElapsed = false;
-
-                // Check and proceed to the next phrase when both speech ends and minimum display duration passes
-                const checkAndProceed = () => {
-                    if (speechEnded && displayTimeElapsed) {
-                        // When both conditions are met, start the animation to transition to the next phrase
-                        if (speechText.textContent) { // Only apply animation if text is currently displayed
-                            speechText.classList.remove('slide-in');
-                            speechText.classList.add('slide-out');
-                            speechText.addEventListener('animationend', function handler(event) {
-                                if (event.animationName === 'slideOutToRight') {
-                                    speechText.removeEventListener('animationend', handler);
-                                    processNextPhrase(); // Process the next phrase after animation completes
-                                }
-                            }, { once: true });
-                        } else {
-                            processNextPhrase(); // If no text, directly process the next phrase
-                        }
-                    }
-                };
+                const displayDuration = Math.max(words.length * 1000, 1500); // Total duration text is visible
 
                 currentUtterance = new SpeechSynthesisUtterance(phrase);
-                currentUtterance.lang = 'tr-TR';
+                currentUtterance.lang = 'tr-TR'; // Ensure Turkish language
 
                 currentUtterance.onend = () => {
-                    speechEnded = true;
-                    checkAndProceed();
+                    // This callback means the *speech* has ended.
+                    // The *display* of the text is controlled by the `displayTimeout`.
+                    // No action needed here regarding display or next phrase, as `displayTimeout` will handle it.
                 };
 
                 currentUtterance.onerror = (event) => {
                     console.error('Speech synthesis error:', phrase, event.error);
-                    speechEnded = true; // Consider speech ended even on error
-                    checkAndProceed();
+                    // On error, the display timeout still needs to run to proceed to the next phrase.
                 };
 
                 speechSynthesis.speak(currentUtterance);
 
                 clearTimeout(displayTimeout);
                 displayTimeout = setTimeout(() => {
-                    displayTimeElapsed = true;
-                    checkAndProceed();
-                }, displayDuration); // Set timer for display duration
-            }
+                    // This timeout fires when the total display duration for the current phrase is over.
+                    // Now, trigger the slide-out animation and then proceed to the next phrase.
+                    if (isSpeechPopupVisible) { // Only animate out if it was visible
+                        speechText.classList.remove('slide-in');
+                        speechText.classList.add('slide-out');
+                        speechText.addEventListener('animationend', function handler(event) {
+                            if (event.animationName === 'slideOutToRight') {
+                                speechText.removeEventListener('animationend', handler);
+                                processNextPhrase(); // Proceed to the next phrase in the sequence
+                            }
+                        }, { once: true });
+                    } else {
+                        processNextPhrase(); // If not visible, just proceed immediately
+                    }
+                }, displayDuration); // Use displayDuration for the timeout
 
-            // Function to manage the sequence of phrases and animations
-            function processNextPhrase() {
-                if (currentPhraseIndex < phrases.length) {
-                    const phraseToSpeak = phrases[currentPhraseIndex].trim();
-                    currentPhraseIndex++;
-                    speakSinglePhrase(phraseToSpeak); // Directly speak and display the next phrase
-                } else {
-                    // All phrases have been processed, hide the popup after a short delay
-                    setTimeout(() => {
+            } else {
+                // All phrases have been processed.
+                setTimeout(() => {
+                    if (isSpeechPopupVisible) { // Only remove active if it was visible
                         speechPopup.classList.remove('active');
-                        speechText.textContent = '';
-                        speechText.classList.remove('slide-in', 'slide-out');
-                    }, 500);
-                }
-            }
+                    }
+                    speechText.textContent = '';
+                    speechText.classList.remove('slide-in', 'slide-out');
+                    isAIResponding = false; // AI finished speaking
 
-            // Show the popup and start the process
-            speechPopup.classList.add('active');
-            processNextPhrase(); // Start with the first phrase
+                    // Small delay before restarting recognition to avoid race conditions
+                    setTimeout(() => {
+                        if (recognition && !isRecognitionActive && isRecognitionEnabled) { // Only restart if not already active and enabled
+                            recognition.start();
+                            voiceStatus.textContent = "Dinleniyor...";
+                        }
+                    }, 200); // 200ms delay
+                }, 500); // Short delay before completely hiding popup
+            }
         }
 
-        // Close speech response window button
+        // Close speech response window button (manual close)
         closeSpeechButton.addEventListener('click', () => {
             speechSynthesis.cancel(); // Stop speech
             if (currentUtterance) {
@@ -508,8 +675,20 @@
             clearTimeout(displayTimeout); // Clear display timer
             // Stop ongoing animations and reset classes
             speechText.classList.remove('slide-in', 'slide-out');
-            speechPopup.classList.remove('active');
+            speechPopup.classList.remove('active'); // Always hide on manual close
             speechText.textContent = '';
+            isSpeechPopupVisible = false; // Ensure the toggle state is updated
+            updateButtonStates(); // Update button visual
+
+            if (isAIResponding) {
+                isAIResponding = false;
+                setTimeout(() => { // Add a small delay here too
+                    if (recognition && !isRecognitionActive && isRecognitionEnabled) {
+                        recognition.start();
+                        voiceStatus.textContent = "Dinleniyor...";
+                    }
+                }, 200);
+            }
         });
 
 
@@ -517,13 +696,13 @@
         function initializeSpeechRecognition() {
             // Check if browser supports SpeechRecognition API
             if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
-                voiceStatus.textContent = "Sorry, your browser does not support speech recognition.";
+                voiceStatus.textContent = "Üzgünüm, tarayıcınız ses tanımayı desteklemiyor.";
                 return;
             }
 
             // Check if browser supports microphone and media devices API
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                voiceStatus.textContent = "Your browser does not support microphone access.";
+                voiceStatus.textContent = "Tarayıcınız mikrofon erişimini desteklemiyor.";
                 return;
             }
 
@@ -531,29 +710,29 @@
             navigator.permissions.query({ name: 'microphone' }).then((permissionStatus) => {
                 if (permissionStatus.state === 'granted') {
                     // If permission is already granted, start speech recognition directly
-                    voiceStatus.textContent = "Microphone permission granted. Starting listening...";
+                    voiceStatus.textContent = "Mikrofon izni verildi. Dinleme başlatılıyor...";
                     startRecognition();
                 } else if (permissionStatus.state === 'denied') {
                     // If permission is denied, tell the user to enable it manually
-                    voiceStatus.textContent = "Microphone permission denied. Voice commands are unavailable. Please enable it manually in your browser settings.";
+                    voiceStatus.textContent = "Mikrofon izni reddedildi. Sesli komutlar kullanılamıyor. Lütfen tarayıcı ayarlarınızdan manuel olarak etkinleştirin.";
                     // Removed speak() call to prevent "Speech synthesis error" in this scenario
                 } else {
                     // If permission state is 'prompt' or 'undefined', request permission
-                    voiceStatus.textContent = "Waiting for microphone permission...";
+                    voiceStatus.textContent = "Mikrofon izni bekleniyor...";
                     navigator.mediaDevices.getUserMedia({ audio: true })
                         .then(() => {
-                            voiceStatus.textContent = "Microphone permission granted. Starting listening...";
+                            voiceStatus.textContent = "Mikrofon izni verildi. Dinleme başlatılıyor...";
                             startRecognition();
                         })
                         .catch((err) => {
-                            console.error("Microphone permission denied or error occurred:", err);
-                            voiceStatus.textContent = "Microphone permission denied. Voice commands are unavailable. Please enable it manually in your browser settings.";
+                            console.error("Mikrofon izni reddedildi veya hata oluştu:", err);
+                            voiceStatus.textContent = "Mikrofon izni reddedildi. Sesli komutlar kullanılamıyor. Lütfen tarayıcı ayarlarınızdan manuel olarak etkinleştirin.";
                             // Removed speak() call to prevent "Speech synthesis error" in this scenario
                         });
                 }
             }).catch((err) => {
                 console.error("Error querying microphone permission status:", err);
-                voiceStatus.textContent = "Could not check microphone permission status. Please check your browser settings.";
+                voiceStatus.textContent = "Mikrofon izin durumu kontrol edilemedi. Lütfen tarayıcı ayarlarınızı kontrol edin.";
                 // Removed speak() call to prevent "Speech synthesis error" in this scenario
             });
 
@@ -565,20 +744,32 @@
 
                 // When speech recognition starts
                 recognition.onstart = () => {
-                    voiceStatus.textContent = "Listening...";
+                    voiceStatus.textContent = "Dinleniyor...";
+                    isRecognitionActive = true; // Set flag when recognition starts
                     console.log("Speech recognition started.");
                 };
 
                 // When speech recognition ends
                 recognition.onend = () => {
-                    console.log("Speech recognition stopped. Restarting.");
-                    voiceStatus.textContent = "Listening stopped. Restarting...";
-                    // Automatically restart listening
-                    recognition.start();
+                    console.log("Ses tanıma durdu.");
+                    isRecognitionActive = false; // Clear flag when recognition stops
+                    if (!isAIResponding && isRecognitionEnabled) { // Only restart if AI is not currently speaking and recognition is enabled
+                        console.log("Ses tanıma otomatik olarak yeniden başlatılıyor.");
+                        voiceStatus.textContent = "Dinleme durdu. Tekrar başlatılıyor...";
+                        recognition.start();
+                    } else if (!isRecognitionEnabled) {
+                        voiceStatus.textContent = "Ses tanıma kapalı.";
+                    } else if (isAIResponding) {
+                        voiceStatus.textContent = "Femi yanıt veriyor..."; // Keep a status that indicates AI is speaking
+                    }
                 };
 
                 // When speech recognition result comes
                 recognition.onresult = async (event) => {
+                    if (isAIResponding || !isRecognitionEnabled) { // If AI is speaking or recognition is disabled, ignore new voice commands
+                        console.log("AI is speaking or recognition is disabled, ignoring new voice command.");
+                        return;
+                    }
                     let finalTranscript = '';
 
                     // Get only final results
@@ -591,7 +782,7 @@
 
                     if (finalTranscript.length > 0) {
                         const transcript = finalTranscript.toLowerCase().trim();
-                        console.log("Detected speech (final):", transcript);
+                        console.log("Algılanan ses (final):", transcript);
 
                         // Clear previous status
                         if (statusTimeout) {
@@ -600,7 +791,7 @@
                         
                         let queryToProcess = transcript; // Process the entire transcript
 
-                        voiceStatus.textContent = `Detected: "${queryToProcess}" is being processed...`;
+                        voiceStatus.textContent = `Algılandı: "${queryToProcess}" işleniyor...`;
                         
                         // Directly call the search function, allow AI to process the response
                         if (queryToProcess.length > 0) {
@@ -613,19 +804,23 @@
                 // When speech recognition error occurs
                 recognition.onerror = (event) => {
                     console.error("Speech recognition error:", event.error);
-                    voiceStatus.textContent = `Error: ${event.error}. Please check microphone permission.`;
-                    speak("An error occurred in speech recognition.");
+                    voiceStatus.textContent = `Hata: ${event.error}. Lütfen mikrofon iznini kontrol edin.`;
+                    speak("Ses tanıma hatası oluştu.");
                     // Reset status message after a while even on error
                     if (statusTimeout) {
                         clearTimeout(statusTimeout);
                     }
                     statusTimeout = setTimeout(() => {
-                        voiceStatus.textContent = "Listening...";
+                        voiceStatus.textContent = "Dinleniyor...";
                     }, 5000); // Longer duration for error message
                 };
 
-                // Start listening
-                recognition.start();
+                // Only start recognition initially if enabled
+                if (isRecognitionEnabled) {
+                    recognition.start();
+                } else {
+                    voiceStatus.textContent = "Ses tanıma kapalı.";
+                }
             }
         }
 
@@ -649,20 +844,20 @@
                     const blockedDomains = ['youtube.com', 'google.com', 'facebook.com', 'instagram.com', 'twitter.com', 'x.com', 'spotify.com'];
                     const isBlocked = blockedDomains.some(domain => url.includes(domain));
 
-                    voiceStatus.textContent = `"${key}" command detected. Opening ${url}...`;
+                    voiceStatus.textContent = `"${key}" komutu algılandı. ${url} açılıyor...`;
                     speak(`${key} açılıyor.`);
 
                     if (isBlocked) {
                         let countdown = 3;
-                        voiceStatus.textContent += ` This site cannot be previewed due to security policies. Opening in a new tab... in ${countdown} seconds.`;
+                        voiceStatus.textContent += ` Bu site güvenlik politikaları nedeniyle önizlenemiyor. Yeni sekmede açılıyor... ${countdown} saniye içinde.`;
                         const interval = setInterval(() => {
                             countdown--;
                             if (countdown > 0) {
-                                voiceStatus.textContent = `This site cannot be previewed due to security policies. Opening in a new tab... in ${countdown} seconds.`;
+                                countdownElement.textContent = `Bu site güvenlik politikaları nedeniyle önizlenemiyor. Yeni sekmede açılıyor... ${countdown} saniye içinde.`;
                             } else {
                                 clearInterval(interval);
                                 window.open(url, '_blank');
-                                voiceStatus.textContent = `This site opened in a new tab due to security policies.`;
+                                countdownElement.textContent = `Bu site güvenlik politikaları nedeniyle yeni sekmede açıldı.`;
                             }
                         }, 1000);
                     } else {
@@ -680,11 +875,11 @@
         }
 
 
-        // Search function
+        // Arama fonksiyonu
         async function performSearch(voiceQuery = null) { // voiceQuery parameter added
             const query = voiceQuery || searchInput.value.trim(); // Use voice query if available, otherwise get from input
             if (!query) {
-                displayError("Please enter a search term.");
+                displayError("Lütfen bir arama terimi girin.");
                 // Reset button state
                 searchButton.disabled = false;
                 buttonText.classList.remove('hidden');
@@ -700,16 +895,37 @@
             aiResponseDiv.innerHTML = ''; // Clear previous AI response
             noResultsMessage.classList.add('hidden');
             errorMessage.classList.add('hidden');
-            voiceStatus.textContent = `Searching for response for "${query}"...`;
-            speak("Searching for response.");
+            voiceStatus.textContent = `"${query}" için yanıt aranıyor...`;
+            
+            // Check for Easter Egg
+            if (query.toLowerCase() === "emirtru") {
+                const easterEggText = "O benim sahibimin nicki sen sahibim değilsin!";
+                aiResponseDiv.innerHTML = `
+                    <div class="result-card bg-blue-50 border-blue-200">
+                        <h3 class="result-title text-blue-800 text-xl mb-2">✨ Yapay Zeka Yanıtı</h3>
+                        <p class="result-snippet text-blue-700">${easterEggText}</p>
+                    </div>
+                `;
+                speak(easterEggText);
+                // Reset UI after Easter Egg response
+                searchButton.disabled = false;
+                buttonText.classList.remove('hidden');
+                loadingSpinner.classList.add('hidden');
+                searchInput.value = '';
+                voiceStatus.textContent = "Dinleniyor..."; // Ready for next command
+                return; // Stop further processing for Easter Egg
+            }
+
+
+            speak("Yanıt aranıyor.");
 
 
             try {
                 // 1. Generate AI Response (using Gemini API)
                 aiResponseDiv.innerHTML = `
                     <div class="result-card bg-blue-50 border-blue-200">
-                        <h3 class="result-title text-blue-800 text-xl mb-2">✨ AI Response</h3>
-                        <p class="text-center text-gray-500">Generating AI response...</p>
+                        <h3 class="result-title text-blue-800 text-xl mb-2">✨ Yapay Zeka Yanıtı</h3>
+                        <p class="text-center text-gray-500">Yapay zeka yanıtı oluşturuluyor...</p>
                     </div>
                 `;
                 let chatHistory = [];
@@ -719,7 +935,7 @@
                 // - State that you do not have image generation capabilities.
                 // - When receiving a command to open/visit a website (e.g., "open YouTube", "go to Google", "open slow roads", "open x"), the response should only be the URL of that website (e.g., "https://www.youtube.com", "https://www.google.com", "https://slowroads.io", "https://x.com"). Do not add any other text. Just provide the URL.
                 // - In other cases, provide a short, informative, and concise response to the user's search query.
-                chatHistory.push({ role: "user", parts: [{ text: `Provide a medium-length, informative response. If asked who you are, respond "I am Femi.". Do not mention image generation or media processing capabilities. If you receive a command to open or visit a website (e.g., "YouTube aç", "Google'a git", "slow roads aç", "x aç"), your response should only be the URL of that website (e.g., "https://www.youtube.com", "https://www.google.com", "https://slowroads.io", "https://x.com"). Do not add any other text. Just provide the URL. Provide a short, informative, and concise response to the user's search query: "${query}"` }] });
+                chatHistory.push({ role: "user", parts: [{ text: `Çok uzun yanıtlar verme, kısa ve öz ol. Eğer kim olduğun sorulursa, "Ben Femi." diye yanıt ver. Görsel oluşturma veya medya işleme yeteneğim olmadığını unutma. Eğer bir web sitesi açma veya ziyaret etme komutu alırsan (örn: "YouTube aç", "Google'a git", "slow roads aç", "x aç"), yanıtın sadece o web sitesinin URL'si olsun (örn: "https://www.youtube.com", "https://www.google.com", "https://slowroads.io", "https://x.com"). Başka hiçbir metin ekleme. Sadece URL'yi ver. Kullanıcının arama sorgusuna kısa, bilgilendirici ve özet bir yanıt ver: "${query}"` }] });
                 const payload = { contents: chatHistory };
                 // Paste your Gemini API key here.
                 const apiKey = "AIzaSyAng0nZ5N8ZyQmNLkVhf0HZbziVXBa_Xbw";
@@ -810,10 +1026,10 @@
                             <p class="result-snippet text-blue-700">Merhaba! Ben Femi. Sorgunla ilgili bilgi veremiyorum çünkü yapay zeka servisine erişilemiyor. Lütfen API anahtarını kontrol et ve daha sonra tekrar dene. Eğer bir web sitesi önerisi bekliyorsan, şu an için doğrudan açamıyorum.</p>
                         </div>
                     `;
-                    speak("Sorry, AI response could not be retrieved. Please try again later.");
+                    speak("Üzgünüm, yapay zeka yanıtı alınamadı. Lütfen daha sonra tekrar deneyin.");
                 }
 
-                // 2. Web Search Results (using google_search tool)
+                // 2. Web Arama Sonuçları (google_search aracı kullanarak)
                 if (typeof google_search !== 'undefined' && typeof google_search.search === 'function') {
                     const searchResults = await google_search.search(queries=[query, query + " search"]);
 
@@ -875,18 +1091,21 @@
         }
 
         // Listen for click event on search button
-        searchButton.addEventListener('click', performSearch);
+        // Changed to use an arrow function to prevent the event object from being passed as voiceQuery
+        searchButton.addEventListener('click', () => performSearch());
 
         // Perform search on Enter key press
         searchInput.addEventListener('keypress', (event) => {
             if (event.key === 'Enter') {
                 performSearch();
-    
-       }
+            }
         });
 
-        // Start speech recognition when page loads
-        window.addEventListener('load', initializeSpeechRecognition);
+        // Initial state update when page loads
+        window.addEventListener('load', () => {
+            initializeSpeechRecognition();
+            updateButtonStates(); // Set initial button states
+        });
     </script>
 </body>
 </html>
