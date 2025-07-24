@@ -855,7 +855,7 @@
                 recognition.onerror = (event) => {
                     console.error("Ses tanıma hatası:", event.error);
                     voiceStatus.textContent = `Hata: ${event.error}. Lütfen mikrofon iznini kontrol edin.`;
-                    speak("Ses tanıma hatası oluştu.");
+                    // speak("Ses tanıma hatası oluştu."); // Bu satır kaldırıldı
                     // Hata durumunda bile bir süre sonra durum mesajını sıfırla
                     if (statusTimeout) {
                         clearTimeout(statusTimeout);
