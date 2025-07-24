@@ -790,6 +790,7 @@
                     }
 
                     let finalTranscript = '';
+                    // Sadece bu olaydan gelen yeni nihai sonuçları işle
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
                         const result = event.results[i];
                         if (result.isFinal) {
@@ -825,7 +826,7 @@
                                 searchInput.value = '';
                                 // Zamanlayıcıyı yeniden başlat
                                 voiceCommandTimeoutId = setTimeout(() => {
-                                    if (awaitingVoiceQuery) {
+                                    if (awaitingVoiceQuery) { // Sadece hala bekleniyorsa sıfırla
                                         awaitingVoiceQuery = false;
                                         voiceStatus.textContent = "Sorunuz algılanamadı. Tekrar deneyin.";
                                         speak("Sorunuz algılanamadı. Tekrar deneyin.");
@@ -869,9 +870,11 @@
                                 }
                             }, 5000); // Sorguyu söylemek için 5 saniye
                         }
+                    } else {
+                        // Tetikleyici ifade bulunmazsa ve bir sorgu beklemiyorsak hiçbir şey yapma.
+                        // Bu, AI'ın sadece "Yapay Zeka"dan sonra yanıt vermesini sağlar.
+                        console.log("Tetikleyici ifade algılanmadı ve sorgu beklenmiyor. Transkript yoksayılıyor.");
                     }
-                    // Tetikleyici bulunmazsa ve bir sorgu beklemiyorsak hiçbir şey yapma.
-                    // Bu, AI'ın sadece "Yapay Zeka"dan sonra yanıt vermesini sağlar.
                 };
 
                 // Ses tanıma hatası oluştuğunda
