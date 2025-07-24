@@ -629,6 +629,13 @@
             isAIResponding = true; // AI'ın konuştuğunu belirten bayrağı ayarla
             voiceStatus.textContent = "Femi yanıt veriyor..."; // Durumu güncelle
 
+            // Popup görünürlüğünü isSpeechPopupVisible bayrağına göre ayarla
+            if (isSpeechPopupVisible) {
+                speechPopup.classList.add('active');
+            } else {
+                speechPopup.classList.remove('active');
+            }
+
             const urlRegex = /(https?:\/\/[^\s]+)|((?:www\.)?[a-z0-9-]+\.[a-z]{2,6}(?:\/[^\s]*)?)/gi;
             const filteredText = text.replace(urlRegex, '');
 
@@ -636,10 +643,6 @@
             phrasesToSpeak = filteredText.split(/(?<=[.!?])\s+|\s{2,}/).filter(p => p.trim() !== '');
             currentPhraseIndex = 0; // Yeni konuşma için cümle indeksini sıfırla
 
-            // Pop-up'ı sadece başlangıçta etkinse göster
-            if (isSpeechPopupVisible) {
-                speechPopup.classList.add('active');
-            }
             processNextPhrase(); // İlk cümleyle başla
         }
 
@@ -799,6 +802,7 @@
 
                 // Ses tanıma başladığında
                 recognition.onstart = () => {
+                    console.log("SR: Recognition started. isRecognitionActive:", isRecognitionActive);
                     voiceStatus.textContent = "Dinleniyor...";
                     isRecognitionActive = true; // Tanıma başladığında bayrağı ayarla
                     console.log("Ses tanıma başlatıldı.");
@@ -806,10 +810,10 @@
 
                 // Ses tanıma bittiğinde
                 recognition.onend = () => {
-                    console.log("Ses tanıma durdu.");
+                    console.log("SR: Recognition ended. isRecognitionActive:", isRecognitionActive, "isAIResponding:", isAIResponding, "isRecognitionEnabled:", isRecognitionEnabled);
                     isRecognitionActive = false; // Tanıma durduğunda bayrağı temizle
                     if (!isAIResponding && isRecognitionEnabled) { // Sadece AI şu anda konuşmuyorsa ve tanıma etkinse yeniden başlat
-                        console.log("Ses tanıma otomatik olarak yeniden başlatılıyor.");
+                        console.log("SR: Ses tanıma otomatik olarak yeniden başlatılıyor.");
                         voiceStatus.textContent = "Dinleme durdu. Tekrar başlatılıyor...";
                         recognition.start();
                     } else if (!isRecognitionEnabled) {
@@ -822,7 +826,7 @@
                 // Ses tanıma sonucu geldiğinde
                 recognition.onresult = async (event) => {
                     if (isAIResponding || !isRecognitionEnabled) { // AI konuşuyorsa veya tanıma devre dışıysa, yeni sesli komutları yoksay
-                        console.log("AI konuşuyor veya tanıma devre dışı, yeni sesli komut yoksayılıyor.");
+                        console.log("SR: AI konuşuyor veya tanıma devre dışı, yeni sesli komut yoksayılıyor.");
                         return;
                     }
 
@@ -837,9 +841,11 @@
 
                     const lowerCaseTranscript = finalTranscript.toLowerCase().trim();
                     const triggerPhrase = "yapay zeka";
+                    console.log("SR: Result received. Transcript:", finalTranscript, "awaitingVoiceQuery:", awaitingVoiceQuery);
 
                     // Eğer şu anda sesli sorgu bekliyorsak ("yapay zeka" dendiğinden beri)
                     if (awaitingVoiceQuery) {
+                        console.log("SR: Awaiting voice query. New transcript:", lowerCaseTranscript);
                         // Yeni bir sonuç aldığımız için zamanlayıcıyı temizle
                         if (voiceCommandTimeoutId) {
                             clearTimeout(voiceCommandTimeoutId);
@@ -848,6 +854,7 @@
 
                         // Eğer yeni transkript hala tetikleyici ifadeyi içeriyorsa (örn: "Yapay Zeka Yapay Zeka" veya tanıma sistemi bir sonraki konuşmada tetikleyiciyi içeriyorsa)
                         if (lowerCaseTranscript.startsWith(triggerPhrase)) {
+                            console.log("SR: Trigger phrase found in awaiting state. Remaining text:", lowerCaseTranscript.substring(triggerPhrase.length).trim());
                             const queryAfterTrigger = lowerCaseTranscript.substring(triggerPhrase.length).trim();
                             if (queryAfterTrigger.length > 0) {
                                 // Tetikleyiciden sonra geçerli bir sorgu var
@@ -855,6 +862,7 @@
                                 voiceStatus.textContent = `Algılandı: "${queryAfterTrigger}" işleniyor...`;
                                 searchInput.value = queryAfterTrigger;
                                 performSearch(queryAfterTrigger);
+                                console.log("SR: Processing query after trigger:", queryAfterTrigger);
                             } else {
                                 // Sadece "Yapay Zeka" tekrarlandı veya tetikleyiciden sonra boş. Beklemeye devam et.
                                 voiceStatus.textContent = "Yapay Zeka algılandı. Dinliyorum.";
@@ -866,7 +874,7 @@
                                     if (awaitingVoiceQuery) { // Sadece hala bekleniyorsa sıfırla
                                         awaitingVoiceQuery = false;
                                         voiceStatus.textContent = "Dinliyor..."; // Sadece durumu sıfırla, konuşma yapma
-                                        console.log("Sesli komut zaman aşımı: 'Yapay Zeka'dan sonra sorgu alınamadı.");
+                                        console.log("SR: Sesli komut zaman aşımı: 'Yapay Zeka'dan sonra sorgu alınamadı.");
                                     }
                                 }, 5000);
                             }
@@ -876,10 +884,12 @@
                             voiceStatus.textContent = `Algılandı: "${lowerCaseTranscript}" işleniyor...`;
                             searchInput.value = lowerCaseTranscript;
                             performSearch(lowerCaseTranscript);
+                            console.log("SR: Processing direct query after trigger wait:", lowerCaseTranscript);
                         }
                         // Eğer lowerCaseTranscript burada boşsa, bu sessizlik anlamına gelir, bu yüzden beklemeye devam ederiz (zamanlayıcı bunu halleder)
                     } else if (lowerCaseTranscript.includes(triggerPhrase)) {
                         // "Yapay Zeka" ilk kez duyuldu
+                        console.log("SR: Initial trigger phrase detected. Transcript:", lowerCaseTranscript);
                         const triggerIndex = lowerCaseTranscript.indexOf(triggerPhrase);
                         const remainingText = lowerCaseTranscript.substring(triggerIndex + triggerPhrase.length).trim();
 
@@ -890,6 +900,7 @@
                             performSearch(remainingText);
                             triggerSound.play(); // Sorgu işlenirken sesi hemen çal
                             awaitingVoiceQuery = false; // Beklemiyoruz, sorgu işlendi
+                            console.log("SR: Processing query with inline trigger:", remainingText);
                         } else {
                             // Sadece "Yapay Zeka" söylendi veya cümlenin sonunda. Beklemeye başla.
                             awaitingVoiceQuery = true;
@@ -901,20 +912,21 @@
                                 if (awaitingVoiceQuery) { // Sadece hala bekleniyorsa sıfırla
                                     awaitingVoiceQuery = false;
                                     voiceStatus.textContent = "Dinliyor..."; // Sadece durumu sıfırla, konuşma yapma
-                                    console.log("Sesli komut zaman aşımı: 'Yapay Zeka'dan sonra sorgu alınamadı.");
+                                    console.log("SR: Sesli komut zaman aşımı: 'Yapay Zeka'dan sonra sorgu alınamadı.");
                                 }
                             }, 5000); // Sorguyu söylemek için 5 saniye
+                            console.log("SR: Trigger phrase detected, awaiting follow-up query.");
                         }
                     } else {
                         // Tetikleyici ifade bulunmazsa ve bir sorgu beklemiyorsak hiçbir şey yapma.
                         // Bu, AI'ın sadece "Yapay Zeka"dan sonra yanıt vermesini sağlar.
-                        console.log("Tetikleyici ifade algılanmadı ve sorgu beklenmiyor. Transkript yoksayılıyor.");
+                        console.log("SR: Transcript ignored (no trigger or not awaiting).");
                     }
                 };
 
                 // Ses tanıma hatası oluştuğunda
                 recognition.onerror = (event) => {
-                    console.error("Ses tanıma hatası:", event.error);
+                    console.error("SR: Ses tanıma hatası:", event.error);
                     voiceStatus.textContent = `Hata: ${event.error}. Lütfen mikrofon iznini kontrol edin.`;
                     // Hata durumunda bile bir süre sonra durum mesajını sıfırla
                     if (statusTimeout) {
@@ -996,6 +1008,59 @@
             return `Şu anki tarih: ${dateStr} ve saat: ${timeStr}.`;
         }
 
+        // Yeni fonksiyon: Halk TV'den haberleri al
+        async function getNewsFromHalkTv() {
+            console.log("Halk TV'den haberler çekilmeye çalışılıyor...");
+            try {
+                const url = "https://halktv.com.tr";
+                // browsing aracının mevcut olup olmadığını kontrol et
+                if (typeof browsing === 'undefined' || typeof browsing.browse !== 'function') {
+                    console.error("Browsing aracı mevcut değil. Haberler çekilemiyor.");
+                    return "Üzgünüm, haberleri almak için gerekli araç şu anda mevcut değil.";
+                }
+
+                const htmlContent = await browsing.browse(url, url);
+                console.log("Halk TV HTML içeriği başarıyla çekildi.");
+
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlContent, 'text/html');
+
+                const newsItems = [];
+                // Halk TV'nin güncel yapısına göre seçiciler (Bu seçiciler değişebilir!)
+                // Genellikle haber kartları için kullanılan sınıflar:
+                // .news-card, .article-card, .news-item, .post-item
+                const articles = doc.querySelectorAll('.news-card, .article-card, .news-item, .post-item');
+
+                for (let i = 0; i < Math.min(articles.length, 5); i++) { // İlk 5 haberi al
+                    const article = articles[i];
+                    // Başlık ve link için yaygın seçiciler
+                    const titleElement = article.querySelector('h2 a, h3 a, .news-title a, .card-title a');
+                    // Açıklama/özet için yaygın seçiciler
+                    const snippetElement = article.querySelector('p.news-snippet, .news-summary, .card-summary');
+
+                    const title = titleElement ? titleElement.textContent.trim() : null;
+                    const link = titleElement ? titleElement.href : null;
+                    const snippet = snippetElement ? snippetElement.textContent.trim() : 'Açıklama yok.';
+
+                    if (title && link) { // Sadece başlık ve link varsa ekle
+                        newsItems.push(`- ${title}: ${snippet} (Daha fazlası: ${link})`);
+                    }
+                }
+
+                if (newsItems.length > 0) {
+                    console.log("Çekilen haberler:", newsItems);
+                    return "İşte Halk TV'den bazı güncel haberler:\n" + newsItems.join('\n');
+                } else {
+                    console.log("Mevcut seçicilerle Halk TV'de haber bulunamadı.");
+                    return "Üzgünüm, Halk TV'den güncel haberleri alırken bir sorun oluştu veya haber bulunamadı.";
+                }
+
+            } catch (error) {
+                console.error("Halk TV'den haber alınırken genel hata oluştu:", error);
+                return "Üzgünüm, Halk TV'den haberleri alırken bir sorun oluştu.";
+            }
+        }
+
 
         // Arama fonksiyonu
         async function performSearch(voiceQuery = null) { // voiceQuery parametresi eklendi
@@ -1051,7 +1116,7 @@
                 `;
 
                 let chatHistory = [];
-                let promptText = `Çok uzun yanıtlar verme, kısa ve öz ol. Eğer kim olduğun sorulursa, "Ben Femi." diye yanıt ver. Görsel oluşturma veya medya işleme yeteneğim olmadığını unutma. Eğer bir web sitesi açma veya ziyaret etme komutu alırsan (örn: "YouTube aç", "Google'a git", "slow roads aç", "x aç"), yanıtın sadece o web sitesinin URL'si olsun (örn: "https://www.youtube.com", "https://www.google.com", "https://slowroads.io", "https://x.com"). Başka hiçbir metin ekleme. Sadece URL'yi ver. Kullanıcının arama sorgusuna kısa, bilgilendirici ve özet bir yanıt ver: "${query}"`;
+                let promptText = `Çok uzun yanıtlar verme, kısa ve öz ol. Eğer kim olduğun sorulursa, "Ben Femi." diye yanıt ver. Görsel oluşturma veya medya işleme yeteneğim olmadığını unutma. Eğer bir web sitesi açma veya ziyaret etme komutu alırsan (örn: "YouTube aç", "Google'a git", "slow roads aç", "x aç"), yanıtın sadece o web sitesinin URL'si olsun (örn: "https://www.youtube.com", "https://www.google.com", "https://slowroads.io", "https://x.com"). Başka hiçbir metin ekleme. Sadece URL'yi ver. Eğer kullanıcının girişi bir selamlaşma veya basit bir sohbet başlangıcıysa (örn: "Merhaba", "Selam", "Nasılsın", "Dostum"), kısa ve samimi bir şekilde selamla veya yanıt ver (örn: "Merhaba!", "Selam!", "İyiyim, sen nasılsın?", "Merhaba Emir!"). Diğer durumlarda, kullanıcının arama sorgusuna kısa, bilgilendirici ve özet bir yanıt ver: "${query}"`;
 
                 // Tarih/saat ile ilgili bir sorgu olup olmadığını kontrol et
                 const lowerCaseQuery = query.toLowerCase();
@@ -1059,6 +1124,12 @@
                     const dateTimeInfo = getDateTimeFromDevice(); // Cihazdan tarih/saat al
                     if (dateTimeInfo) {
                         promptText += ` ${dateTimeInfo} Bu bilgiyi kullanarak soruyu yanıtla.`;
+                    }
+                } else if (lowerCaseQuery.includes("haberler") || lowerCaseQuery.includes("son dakika") || lowerCaseQuery.includes("gündem") || lowerCaseQuery.includes("halktv haberleri")) {
+                    console.log("Kullanıcı haberleri sordu. getNewsFromHalkTv çağrılıyor...");
+                    const newsInfo = await getNewsFromHalkTv();
+                    if (newsInfo) {
+                        promptText += ` ${newsInfo} Bu bilgiyi kullanarak soruyu yanıtla.`;
                     }
                 }
 
@@ -1218,7 +1289,7 @@
         }
 
         // Arama düğmesine tıklama olayını dinle
-        searchButton.addEventListener('click', () => performSearch());
+        searchButton.addEventListener('click', performSearch);
 
         // Enter tuşuna basıldığında arama yap
         searchInput.addEventListener('keypress', (event) => {
