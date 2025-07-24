@@ -789,12 +789,6 @@
                         return;
                     }
 
-                    // Yeni konuşma algılandığında bekleyen zamanlayıcıyı temizle
-                    if (voiceCommandTimeoutId) {
-                        clearTimeout(voiceCommandTimeoutId);
-                        voiceCommandTimeoutId = null;
-                    }
-
                     let finalTranscript = '';
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
                         const result = event.results[i];
@@ -806,31 +800,64 @@
                     const lowerCaseTranscript = finalTranscript.toLowerCase().trim();
                     const triggerPhrase = "yapay zeka";
 
+                    // Eğer şu anda sesli sorgu bekliyorsak ("yapay zeka" dendiğinden beri)
                     if (awaitingVoiceQuery) {
-                        // Eğer bir sorgu bekliyorsak, bu transkript sorgudur
-                        const queryToProcess = lowerCaseTranscript;
-                        awaitingVoiceQuery = false; // Bayrağı sıfırla
-                        voiceStatus.textContent = `Algılandı: "${queryToProcess}" işleniyor...`;
-                        searchInput.value = queryToProcess;
-                        performSearch(queryToProcess);
+                        // Yeni bir sonuç aldığımız için zamanlayıcıyı temizle
+                        if (voiceCommandTimeoutId) {
+                            clearTimeout(voiceCommandTimeoutId);
+                            voiceCommandTimeoutId = null;
+                        }
+
+                        // Eğer yeni transkript hala tetikleyici ifadeyi içeriyorsa (örn: "Yapay Zeka Yapay Zeka" veya tanıma sistemi bir sonraki konuşmada tetikleyiciyi içeriyorsa)
+                        if (lowerCaseTranscript.startsWith(triggerPhrase)) {
+                            const queryAfterTrigger = lowerCaseTranscript.substring(triggerPhrase.length).trim();
+                            if (queryAfterTrigger.length > 0) {
+                                // Tetikleyiciden sonra geçerli bir sorgu var
+                                awaitingVoiceQuery = false; // Bekleme bayrağını sıfırla
+                                voiceStatus.textContent = `Algılandı: "${queryAfterTrigger}" işleniyor...`;
+                                searchInput.value = queryAfterTrigger;
+                                performSearch(queryAfterTrigger);
+                            } else {
+                                // Sadece "Yapay Zeka" tekrarlandı veya tetikleyiciden sonra boş. Beklemeye devam et.
+                                voiceStatus.textContent = "Yapay Zeka algılandı. Dinliyorum.";
+                                speak("Dinliyorum.");
+                                triggerSound.play();
+                                searchInput.value = '';
+                                // Zamanlayıcıyı yeniden başlat
+                                voiceCommandTimeoutId = setTimeout(() => {
+                                    if (awaitingVoiceQuery) {
+                                        awaitingVoiceQuery = false;
+                                        voiceStatus.textContent = "Sorunuz algılanamadı. Tekrar deneyin.";
+                                        speak("Sorunuz algılanamadı. Tekrar deneyin.");
+                                        console.log("Sesli komut zaman aşımı: 'Yapay Zeka'dan sonra sorgu alınamadı.");
+                                    }
+                                }, 5000);
+                            }
+                        } else if (lowerCaseTranscript.length > 0) {
+                            // Bu, "Yapay Zeka"dan sonraki gerçek sorgudur
+                            awaitingVoiceQuery = false; // Bayrağı sıfırla
+                            voiceStatus.textContent = `Algılandı: "${lowerCaseTranscript}" işleniyor...`;
+                            searchInput.value = lowerCaseTranscript;
+                            performSearch(lowerCaseTranscript);
+                        }
+                        // Eğer lowerCaseTranscript burada boşsa, bu sessizlik anlamına gelir, bu yüzden beklemeye devam ederiz (zamanlayıcı bunu halleder)
                     } else if (lowerCaseTranscript.includes(triggerPhrase)) {
+                        // "Yapay Zeka" ilk kez duyuldu
                         const triggerIndex = lowerCaseTranscript.indexOf(triggerPhrase);
                         const remainingText = lowerCaseTranscript.substring(triggerIndex + triggerPhrase.length).trim();
 
                         if (remainingText.length > 0) {
                             // "Yapay Zeka" ve sorgu aynı konuşmada
-                            const queryToProcess = remainingText;
-                            voiceStatus.textContent = `Algılandı: "${queryToProcess}" işleniyor...`;
-                            searchInput.value = queryToProcess;
-                            performSearch(queryToProcess);
-                            // Sorgu hemen işlendiği için "Dinliyorum" demeye veya ses çalmaya gerek yok.
-                            awaitingVoiceQuery = false; // Bu durumda beklemeyi sıfırla
+                            voiceStatus.textContent = `Algılandı: "${remainingText}" işleniyor...`;
+                            searchInput.value = remainingText;
+                            performSearch(remainingText);
+                            triggerSound.play(); // Sorgu işlenirken sesi hemen çal
+                            awaitingVoiceQuery = false; // Beklemiyoruz, sorgu işlendi
                         } else {
-                            // Sadece "Yapay Zeka" söylendi veya cümlenin sonunda
-                            // Şimdi "Dinliyorum" desin ve sesi çalsın, ardından bir sonraki sorguyu beklesin.
+                            // Sadece "Yapay Zeka" söylendi veya cümlenin sonunda. Beklemeye başla.
                             awaitingVoiceQuery = true;
                             voiceStatus.textContent = "Yapay Zeka algılandı. Dinliyorum.";
-                            speak("Dinliyorum."); // Mesaj değiştirildi
+                            speak("Dinliyorum.");
                             triggerSound.play(); // Tetikleyici cümle algılandığında sesi çal
                             searchInput.value = ''; // Yeni sorgu için girişi temizle
                             voiceCommandTimeoutId = setTimeout(() => {
@@ -842,13 +869,9 @@
                                 }
                             }, 5000); // Sorguyu söylemek için 5 saniye
                         }
-                    } else {
-                        // Tetikleyici cümle yoksa ve bir sorgu beklemiyorsak normal sorgu
-                        const queryToProcess = lowerCaseTranscript;
-                        voiceStatus.textContent = `Algılandı: "${queryToProcess}" işleniyor...`;
-                        searchInput.value = queryToProcess;
-                        performSearch(queryToProcess);
                     }
+                    // Tetikleyici bulunmazsa ve bir sorgu beklemiyorsak hiçbir şey yapma.
+                    // Bu, AI'ın sadece "Yapay Zeka"dan sonra yanıt vermesini sağlar.
                 };
 
                 // Ses tanıma hatası oluştuğunda
