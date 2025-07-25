@@ -168,11 +168,13 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             width: 90%;
             height: 90%;
+            max-height: 90%; /* Added max-height */
             display: flex;
             flex-direction: column;
             position: relative;
             transform: scale(0.8);
             transition: transform 0.3s ease;
+            overflow: hidden; /* Ensure content inside modal is clipped */
         }
 
         .website-overlay.active .website-modal {
@@ -349,6 +351,56 @@
             outline: none;
             box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
         }
+
+        /* Settings Menu Styles */
+        .settings-menu {
+            position: fixed;
+            top: 0;
+            right: -300px; /* Initially hidden off-screen */
+            width: 280px;
+            height: 100%;
+            background-color: #ffffff;
+            box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+            transition: right 0.3s ease-in-out;
+            z-index: 1000;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .settings-menu.active {
+            right: 0; /* Slide in */
+        }
+
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .settings-close-button {
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: #333;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .settings-close-button:hover {
+            color: #f00;
+        }
+
+        .settings-section {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
     </style>
 </head>
 <body>
@@ -386,24 +438,15 @@
         </div>
         <div id="voiceStatus" class="text-center mt-4">Femi'yi bekliyor...</div>
 
-        <!-- New Buttons Container -->
+        <!-- Main Control Buttons Container (Sadece Ayarlar butonu kaldı) -->
         <div class="flex justify-center gap-4 mt-8">
-            <button id="toggleSpeechButton" class="control-button">
-                <i class="fas fa-volume-up fa-2x"></i> <!-- Speaker icon -->
-            </button>
-            <button id="toggleSpeechPopupButton" class="control-button">
-                <i class="fas fa-eye fa-2x"></i> <!-- Eye icon -->
-            </button>
-            <button id="toggleRecognitionButton" class="control-button">
-                <i class="fas fa-microphone fa-2x"></i> <!-- Microphone icon -->
-            </button>
-        </div>
-
-        <!-- Voice Selection Dropdown -->
-        <div class="flex justify-center mt-4">
-            <select id="voiceSelect" class="voice-select w-full max-w-xs">
-                <!-- Voices will be populated here by JavaScript -->
-            </select>
+            <!-- Settings Button -->
+            <div class="flex flex-col items-center">
+                <button id="openSettingsButton" class="control-button">
+                    <i class="fas fa-cog fa-2x"></i> <!-- Settings icon -->
+                </button>
+                <span class="text-gray-600 text-sm mt-2">Ayarlar</span>
+            </div>
         </div>
     </div>
 
@@ -411,7 +454,7 @@
     <div id="websiteOverlay" class="website-overlay">
         <div class="website-modal">
             <button id="closeWebsiteButton" class="website-modal-close">&times;</button>
-            <iframe id="websiteIframe" class="website-iframe"></iframe>
+            <iframe id="websiteIframe" class="website-iframe"></iframe> <!-- iframe artık gizli değil, doğrudan gösterilecek -->
         </div>
     </div>
 
@@ -423,6 +466,52 @@
 
     <!-- Hidden audio element for trigger sound -->
     <audio id="triggerSound" src="images/3.mp3" preload="auto"></audio>
+
+    <!-- Settings Menu -->
+    <div id="settingsMenu" class="settings-menu">
+        <div class="settings-header">
+            <h2 class="text-2xl font-bold text-gray-800">Ayarlar</h2>
+            <button id="closeSettingsButton" class="settings-close-button">&times;</button>
+        </div>
+
+        <div class="settings-section">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3">Sesli Yanıtı Aç/Kapat</h3>
+            <p class="text-sm text-gray-600 mb-3">Femi'nin sesli yanıt vermesini açıp kapatır.</p>
+            <div class="flex justify-center">
+                <button id="toggleSpeechButton" class="control-button">
+                    <i class="fas fa-volume-up fa-2x"></i> <!-- Speaker icon -->
+                </button>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3">Metin Pop-up'ını Aç/Kapat</h3>
+            <p class="text-sm text-gray-600 mb-3">Femi'nin yanıtlarını büyük metin pop-up'ında gösterip göstermemesini ayarlar.</p>
+            <div class="flex justify-center">
+                <button id="toggleSpeechPopupButton" class="control-button">
+                    <i class="fas fa-eye fa-2x"></i> <!-- Eye icon -->
+                </button>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3">Mikrofon Kontrolü</h3>
+            <p class="text-sm text-gray-600 mb-3">Sesli komutlar için mikrofonu açıp kapatır.</p>
+            <div class="flex justify-center">
+                <button id="toggleRecognitionButton" class="control-button">
+                    <i class="fas fa-microphone fa-2x"></i> <!-- Microphone icon -->
+                </button>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3">Ses Seçimi</h3>
+            <p class="text-sm text-gray-600 mb-3">Femi'nin sesli yanıtları için farklı sesler arasından seçim yapın.</p>
+            <select id="voiceSelect" class="voice-select w-full">
+                <!-- Voices will be populated here by JavaScript -->
+            </select>
+        </div>
+    </div>
 
     <script type="module">
         // Firebase ve diğer global değişkenler Canvas ortamından sağlanır
@@ -478,6 +567,11 @@
         // Yeni buton elementlerini al
         const toggleSpeechButton = document.getElementById('toggleSpeechButton');
         const toggleSpeechPopupButton = document.getElementById('toggleSpeechPopupButton');
+        const openSettingsButton = document.getElementById('openSettingsButton'); // Yeni ayarlar butonu
+        const settingsMenu = document.getElementById('settingsMenu'); // Ayarlar menüsü div'i
+        const closeSettingsButton = document.getElementById('closeSettingsButton'); // Ayarlar menüsü kapatma butonu
+
+        // Ayarlar menüsüne taşınan butonlar
         const toggleRecognitionButton = document.getElementById('toggleRecognitionButton');
         const voiceSelect = document.getElementById('voiceSelect'); // Ses seçme dropdown'ı
 
@@ -485,7 +579,7 @@
         function updateButtonStates() {
             toggleSpeechButton.classList.toggle('inactive', !isSpeechEnabled);
             toggleSpeechPopupButton.classList.toggle('inactive', !isSpeechPopupVisible);
-            toggleRecognitionButton.classList.toggle('inactive', !isRecognitionEnabled);
+            toggleRecognitionButton.classList.toggle('inactive', !isRecognitionEnabled); // Ayarlar menüsündeki mikrofon butonu
 
             // Duruma göre ikonları güncelle
             toggleSpeechButton.querySelector('i').className = isSpeechEnabled ? 'fas fa-volume-up fa-2x' : 'fas fa-volume-mute fa-2x';
@@ -568,10 +662,17 @@
             }
         }
 
+        // Ayarlar menüsünü aç/kapat
+        function toggleSettingsMenu() {
+            settingsMenu.classList.toggle('active');
+        }
+
         // Butonlara olay dinleyicileri ekle
         toggleSpeechButton.addEventListener('click', toggleSpeechOutput);
         toggleSpeechPopupButton.addEventListener('click', toggleSpeechPopupVisibility);
-        toggleRecognitionButton.addEventListener('click', toggleRecognitionService);
+        toggleRecognitionButton.addEventListener('click', toggleRecognitionService); // Ayarlar menüsündeki mikrofon butonu
+        openSettingsButton.addEventListener('click', toggleSettingsMenu); // Ayarlar menüsü açma butonu
+        closeSettingsButton.addEventListener('click', toggleSettingsMenu); // Ayarlar menüsü kapatma butonu
 
         // Hata mesajını göster
         function displayError(message) {
@@ -1064,7 +1165,7 @@
 
         // Arama fonksiyonu
         async function performSearch(voiceQuery = null) { // voiceQuery parametresi eklendi
-            const query = voiceQuery || searchInput.value.trim(); // Sesli sorgu varsa onu kullan, yoksa inputtan al
+            const query = String(voiceQuery || searchInput.value).trim(); // Sesli sorgu varsa onu kullan, yoksa inputtan al
             if (!query) {
                 displayError("Lütfen bir arama terimi girin.");
                 // Buton durumunu sıfırla
@@ -1092,6 +1193,41 @@
                 voiceStatus.textContent = "Dinleniyor..."; // Sonraki komut için hazır
                 return; // Easter Egg için daha fazla işlem yapma
             }
+
+            // Yeni: Hava durumu sorgusu kontrolü
+            if (query.toLowerCase() === "hava durumu") {
+                voiceStatus.textContent = "Hava durumu aranıyor...";
+                speak("Hava durumu aranıyor.");
+                try {
+                    // Doğrudan belirtilen URL'yi aç
+                    const weatherUrl = "https://www.google.com/search?q=hava+durumu";
+                    showWebsitePopup(weatherUrl);
+                    aiResponseDiv.innerHTML = `
+                        <div class="result-card bg-blue-50 border-blue-200">
+                            <h3 class="result-title text-blue-800 text-xl mb-2">✨ Hava Durumu Sonuçları</h3>
+                            <p class="result-snippet text-blue-700">Google'da hava durumu sonuçları gösteriliyor.</p>
+                        </div>
+                    `;
+                    speak("Hava durumu sonuçları gösteriliyor.");
+                } catch (error) {
+                    console.error("Hava durumu araması sırasında hata:", error);
+                    aiResponseDiv.innerHTML = `
+                        <div class="result-card bg-red-50 border-red-200">
+                            <h3 class="result-title text-red-800 text-xl mb-2">⚠️ Hata</h3>
+                            <p class="result-snippet text-red-700">Hava durumu aranırken bir hata oluştu: ${error.message}</p>
+                        </div>
+                    `;
+                    speak(`Hava durumu aranırken bir hata oluştu: ${error.message}`);
+                } finally {
+                    searchButton.disabled = false;
+                    buttonText.classList.remove('hidden');
+                    loadingSpinner.classList.add('hidden');
+                    searchInput.value = '';
+                    voiceStatus.textContent = "Dinleniyor...";
+                    return; // Hava durumu sorgusu işlendi, diğer AI ve web aramalarını atla
+                }
+            }
+
 
             // Arama başladığında UI güncellemeleri
             searchButton.disabled = true;
@@ -1136,7 +1272,7 @@
                 chatHistory.push({ role: "user", parts: [{ text: promptText }] });
                 const payload = { contents: chatHistory };
                 // Kendi Gemini API anahtarını buraya yapıştır.
-                const apiKey = "AIzaSyAng0nZ5N8ZyQmNLkVhf0HZbziVXBa_Xbw";
+                const apiKey = "AIzaSyAng0nZ5N8ZyQmNLkVhf0HZbziVXBa_Xbw"; // API anahtarı buraya yerleştirildi
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
                 try {
