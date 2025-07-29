@@ -1,0 +1,1485 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Femi</title>
+    <link rel="icon" type="image/png" href="images/2.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome CDN for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Inter font for a clean look */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5; /* Light gray background */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align content to the top */
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-x: hidden; /* Prevent horizontal scrolling */
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 800px; /* Maximum width */
+            margin-top: 50px; /* Top margin */
+            opacity: 0; /* Initially hidden */
+            transform: translateY(20px); /* Slightly down initially */
+            animation: fadeInSlideUpContainer 0.8s ease-out forwards; /* Apply animation */
+        }
+        /* Entrance animation for the main container */
+        @keyframes fadeInSlideUpContainer {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .search-input {
+            border: 2px solid #e2e8f0; /* Light border */
+            transition: border-color 0.3s ease, box-shadow 0.3s ease; /* Added shadow transition */
+        }
+        .search-input:focus {
+            border-color: #3b82f6; /* Blue border on focus */
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3); /* More prominent shadow */
+        }
+        .search-button {
+            background-color: #3b82f6; /* Blue button */
+            transition: background-color 0.3s ease, transform 0.1s ease, box-shadow 0.2s ease; /* Gölge geçişi eklendi */
+        }
+        .search-button:hover {
+            background-color: #2563eb; /* Darker blue on hover */
+            transform: translateY(-1px); /* Slight upward shift effect */
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15); /* More prominent shadow on hover */
+        }
+        .search-button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Less shadow on click */
+        }
+        .result-card {
+            background-color: #f8fafc; /* Result card background */
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.5s ease-out, transform 0.5s ease-out; /* Added animation transitions */
+            /* Initial animation state will be set by JS */
+        }
+        .result-card:hover {
+            transform: translateY(-5px); /* More prominent upward shift on hover */
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1); /* More prominent shadow on hover */
+        }
+        .result-title {
+            color: #1a202c; /* Title color */
+            font-weight: 600;
+        }
+        .result-url {
+            color: #3b82f6; /* URL color */
+            font-size: 0.9em;
+            word-break: break-all; /* For breaking long URLs */
+        }
+        .result-snippet {
+            color: #4a5568; /* Description color */
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #3b82f6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        /* Mobile responsive adjustments */
+        @media (max-width: 640px) {
+            .container {
+                padding: 20px;
+                margin-top: 20px;
+            }
+            .flex-col-mobile {
+                flex-direction: column;
+            }
+            .search-button {
+                width: 100%;
+                margin-top: 10px;
+            }
+        }
+        /* New icon styles */
+        .icon {
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 8px; /* Space between text and icon */
+        }
+        .icon-search {
+            width: 20px; /* Magnifying glass icon size */
+            height: 20px;
+            fill: white; /* White color */
+            margin-right: 8px; /* Space between text and icon */
+        }
+        /* Style for Femi logo and camera icon */
+        .femi-logo-text {
+            font-size: 3rem; /* Femi text size */
+            font-weight: 800;
+            color: #1a202c;
+            margin-right: 10px; /* Space between text and icon */
+        }
+        .camera-icon-img {
+            height: 40px; /* Camera icon height */
+            width: auto; /* Auto adjust width */
+        }
+
+        /* Website viewer overlay styles */
+        .website-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent black background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000; /* On top of everything else */
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .website-overlay.active {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .website-modal {
+            background-color: #fff;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            height: 90%;
+            max-height: 90%; /* Added max-height */
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            transform: scale(0.8);
+            transition: transform 0.3s ease;
+            overflow: hidden; /* Ensure content inside modal is clipped */
+        }
+
+        .website-overlay.active .website-modal {
+            transform: scale(1);
+        }
+
+        .website-modal-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: #333;
+            cursor: pointer;
+            z-index: 1001;
+            transition: color 0.2s ease;
+        }
+
+        .website-modal-close:hover {
+            color: #f00;
+        }
+
+        .website-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 0 0 15px 15px;
+        }
+
+        /* New Speech Response Window Styles */
+        .speech-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1002;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .speech-popup.active {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .speech-text {
+            color: #ffffff;
+            font-size: 4rem;
+            font-weight: 900;
+            text-align: center;
+            padding: 20px;
+            max-width: 90%;
+            word-break: break-word;
+            line-height: 1.2;
+        }
+
+        .speech-popup-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            background: none;
+            border: none;
+            font-size: 3rem;
+            color: #ffffff;
+            cursor: pointer;
+            z-index: 1003;
+            transition: color 0.2s ease;
+        }
+
+        .speech-popup-close:hover {
+            color: #ff4d4d;
+        }
+
+        /* Animations */
+        @keyframes slideInFromLeft {
+            from {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOutToRight {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        .slide-in {
+            animation: slideInFromLeft 0.5s ease-out forwards;
+        }
+
+        .slide-out {
+            animation: slideOutToRight 0.3s ease-in forwards;
+        }
+
+        @media (max-width: 768px) {
+            .speech-text {
+                font-size: 2.5rem;
+            }
+            .speech-popup-close {
+                font-size: 2rem;
+                top: 10px;
+                right: 15px;
+            }
+        }
+
+        /* Control Button Styles */
+        .control-button {
+            background-color: #4a90e2; /* Blue */
+            color: white;
+            border-radius: 50%; /* Circular button */
+            width: 60px; /* Fixed size */
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease, transform 0.1s ease, box-shadow 0.2s ease;
+        }
+        .control-button:hover {
+            background-color: #357ABD; /* Darker blue */
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+        }
+        .control-button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .control-button.inactive {
+            background-color: #cccccc; /* Gray for inactive */
+            opacity: 0.7;
+        }
+        .control-button.inactive:hover {
+            background-color: #bbbbbb;
+        }
+
+        /* Voice selection dropdown style */
+        .voice-select {
+            padding: 8px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            background-color: #ffffff;
+            color: #333;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            -webkit-appearance: none; /* Remove default dropdown arrow for better styling */
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url('data:image/svg+xml;utf8,<svg fill="%234a90e2" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            background-size: 20px;
+        }
+
+        .voice-select:focus {
+            border-color: #3b82f6;
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Settings Menu Styles */
+        .settings-menu {
+            position: fixed;
+            top: 0;
+            right: -300px; /* Initially hidden off-screen */
+            width: 280px;
+            height: 100%;
+            background-color: #ffffff;
+            box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+            transition: right 0.3s ease-in-out;
+            z-index: 1000;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .settings-menu.active {
+            right: 0; /* Slide in */
+        }
+
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .settings-close-button {
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: #333;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .settings-close-button:hover {
+            color: #f00;
+        }
+
+        .settings-section {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-4xl font-extrabold text-center text-gray-800 mb-6 flex items-center justify-center">
+            <span class="femi-logo-text">Femi</span>
+            <img src="images/2.png" alt="Kamera İkonu" class="camera-icon-img" onerror="this.onerror=null;this.src='https://placehold.co/40x40/FFD700/000000/png?text=%E2%97%8F%E2%96%A0%E2%96%A0'">
+        </h1>
+        <div class="flex flex-col sm:flex-row gap-3 mb-6">
+            <input type="text" id="searchInput" placeholder="Femi'de ara..."
+                   class="flex-grow p-3 rounded-lg search-input text-gray-700">
+            <button id="searchButton"
+                    class="p-3 rounded-lg text-white font-semibold shadow-md search-button flex items-center justify-center">
+                <svg class="icon icon-search" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="currentColor"/>
+                </svg>
+                <span id="buttonText">Ara</span>
+                <div id="loadingSpinner" class="loading-spinner hidden ml-2"></div>
+            </button>
+        </div>
+
+        <!-- Yapay Zeka Yanıtı Bölümü -->
+        <div id="aiResponse" class="space-y-4 mb-6">
+            <!-- Yapay zeka yanıtı buraya gelecek -->
+        </div>
+
+        <div id="results" class="space-y-4">
+            <!-- Arama sonuçları buraya gelecek -->
+            <p id="noResultsMessage" class="text-center text-gray-500 hidden">Web sonuçları bulunamadı.</p>
+        </div>
+
+        <div id="errorMessage" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mt-4" role="alert">
+            <strong class="font-bold">Hata!</strong>
+            <span class="block sm:inline" id="errorText">Bir şeyler ters gitti. Lütfen tekrar deneyin.</span>
+        </div>
+        <div id="voiceStatus" class="text-center mt-4">Femi'yi bekliyor...</div>
+
+        <!-- Main Control Buttons Container (Sadece Ayarlar butonu kaldı) -->
+        <div class="flex justify-center gap-4 mt-8">
+            <!-- Settings Button -->
+            <div class="flex flex-col items-center">
+                <button id="openSettingsButton" class="control-button">
+                    <i class="fas fa-cog fa-2x"></i> <!-- Settings icon -->
+                </button>
+                <span class="text-gray-600 text-sm mt-2">Ayarlar</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Web Sitesi Görüntüleyici Overlay -->
+    <div id="websiteOverlay" class="website-overlay">
+        <div class="website-modal">
+            <button id="closeWebsiteButton" class="website-modal-close">&times;</button>
+            <iframe id="websiteIframe" class="website-iframe"></iframe> <!-- iframe artık gizli değil, doğrudan gösterilecek -->
+        </div>
+    </div>
+
+    <!-- New Speech Response Window -->
+    <div id="speechPopup" class="speech-popup">
+        <button id="closeSpeechButton" class="speech-popup-close">×</button>
+        <span id="speechText" class="speech-text"></span>
+    </div>
+
+    <!-- Hidden audio element for trigger sound -->
+    <audio id="triggerSound" src="images/3.mp3" preload="auto"></audio>
+
+    <!-- Settings Menu -->
+    <div id="settingsMenu" class="settings-menu">
+        <div class="settings-header">
+            <h2 class="text-2xl font-bold text-gray-800">Ayarlar</h2>
+            <button id="closeSettingsButton" class="settings-close-button">&times;</button>
+        </div>
+
+        <div class="settings-section">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3">Sesli Yanıtı Aç/Kapat</h3>
+            <p class="text-sm text-gray-600 mb-3">Femi'nin sesli yanıt vermesini açıp kapatır.</p>
+            <div class="flex justify-center">
+                <button id="toggleSpeechButton" class="control-button">
+                    <i class="fas fa-volume-up fa-2x"></i> <!-- Speaker icon -->
+                </button>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3">Metin Pop-up'ını Aç/Kapat</h3>
+            <p class="text-sm text-gray-600 mb-3">Femi'nin yanıtlarını büyük metin pop-up'ında gösterip göstermemesini ayarlar.</p>
+            <div class="flex justify-center">
+                <button id="toggleSpeechPopupButton" class="control-button">
+                    <i class="fas fa-eye fa-2x"></i> <!-- Eye icon -->
+                </button>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3">Mikrofon Kontrolü</h3>
+            <p class="text-sm text-gray-600 mb-3">Sesli komutlar için mikrofonu açıp kapatır.</p>
+            <div class="flex justify-center">
+                <button id="toggleRecognitionButton" class="control-button">
+                    <i class="fas fa-microphone fa-2x"></i> <!-- Microphone icon -->
+                </button>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3">Ses Seçimi</h3>
+            <p class="text-sm text-gray-600 mb-3">Femi'nin sesli yanıtları için farklı sesler arasından seçim yapın.</p>
+            <select id="voiceSelect" class="voice-select w-full">
+                <!-- Voices will be populated here by JavaScript -->
+            </select>
+        </div>
+    </div>
+
+    <script type="module">
+        // Firebase ve diğer global değişkenler Canvas ortamından sağlanır
+        // Bu değişkenler tanımlı değilse varsayılan değerler kullanılır
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        // initialAuthToken değişkeninin doğru atanmasını sağla
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // UI elementlerini al
+        const searchInput = document.getElementById('searchInput');
+        const searchButton = document.getElementById('searchButton');
+        const aiResponseDiv = document.getElementById('aiResponse'); // Yeni AI yanıtı div'i
+        const resultsDiv = document.getElementById('results');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const buttonText = document.getElementById('buttonText');
+        const noResultsMessage = document.getElementById('noResultsMessage');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+        const voiceStatus = document.getElementById('voiceStatus'); // Voice status element
+
+        // Web sitesi görüntüleyici elementleri
+        const websiteOverlay = document.getElementById('websiteOverlay');
+        const websiteIframe = document.getElementById('websiteIframe');
+        const closeWebsiteButton = document.getElementById('closeWebsiteButton');
+
+        // Yeni konuşma yanıtı penceresi elementleri
+        const speechPopup = document.getElementById('speechPopup');
+        const speechText = document.getElementById('speechText');
+        const closeSpeechButton = document.getElementById('closeSpeechButton');
+
+        // Ses dosyası elementi
+        const triggerSound = document.getElementById('triggerSound');
+
+        // Ses tanıma ve yanıt fonksiyonları için global değişkenler
+        let recognition;
+        let statusTimeout; // Durum mesajını temizlemek için zamanlayıcı
+        let currentUtterance = null; // Mevcut konuşma nesnesini tutar
+        let displayTimeout = null; // Cümle görüntüleme süresi için zamanlayıcı
+        let isAIResponding = false; // AI'ın şu anda konuşup konuşmadığını gösteren bayrak
+        let isRecognitionActive = false; // Ses tanımanın gerçekten aktif olup olmadığını gösteren bayrağı
+        let phrasesToSpeak = []; // Sıralı konuşma için cümleleri tutan dizi
+        let currentPhraseIndex = 0; // phrasesToSpeak dizisindeki mevcut indeks
+        let awaitingVoiceQuery = false; // "Yapay Zeka" dedikten sonra sesli sorgu bekleyip beklemediğimizi gösteren bayrak
+        let voiceCommandTimeoutId; // Sesli sorgu bekleme zamanlayıcısının ID'si
+        let selectedVoice = null; // Seçilen ses nesnesini tutar
+
+        // Yeni kontrol bayrakları
+        let isSpeechEnabled = true; // Metin okuma çıktısı için
+        let isSpeechPopupVisible = true; // Büyük metin görüntüleme pop-up'ı için
+        let isRecognitionEnabled = false; // Sesten metne tanıma için - VARSAYILAN OLARAK KAPALI
+
+        // Yeni buton elementlerini al
+        const toggleSpeechButton = document.getElementById('toggleSpeechButton');
+        const toggleSpeechPopupButton = document.getElementById('toggleSpeechPopupButton');
+        const openSettingsButton = document.getElementById('openSettingsButton'); // Yeni ayarlar butonu
+        const settingsMenu = document.getElementById('settingsMenu'); // Ayarlar menüsü div'i
+        const closeSettingsButton = document.getElementById('closeSettingsButton'); // Ayarlar menüsü kapatma butonu
+
+        // Ayarlar menüsüne taşınan butonlar
+        const toggleRecognitionButton = document.getElementById('toggleRecognitionButton');
+        const voiceSelect = document.getElementById('voiceSelect'); // Ses seçme dropdown'ı
+
+        // Buton görsellerini güncelleme fonksiyonu
+        function updateButtonStates() {
+            toggleSpeechButton.classList.toggle('inactive', !isSpeechEnabled);
+            toggleSpeechPopupButton.classList.toggle('inactive', !isSpeechPopupVisible);
+            toggleRecognitionButton.classList.toggle('inactive', !isRecognitionEnabled); // Ayarlar menüsündeki mikrofon butonu
+
+            // Duruma göre ikonları güncelle
+            toggleSpeechButton.querySelector('i').className = isSpeechEnabled ? 'fas fa-volume-up fa-2x' : 'fas fa-volume-mute fa-2x';
+            toggleSpeechPopupButton.querySelector('i').className = isSpeechPopupVisible ? 'fas fa-eye fa-2x' : 'fas fa-eye-slash fa-2x';
+            toggleRecognitionButton.querySelector('i').className = isRecognitionEnabled ? 'fas fa-microphone fa-2x' : 'fas fa-microphone-slash fa-2x';
+        }
+
+        // Her servis için açma/kapama fonksiyonları
+        function toggleSpeechOutput() {
+            isSpeechEnabled = !isSpeechEnabled;
+            updateButtonStates();
+            if (!isSpeechEnabled) {
+                speechSynthesis.cancel(); // Devam eden konuşmayı durdur
+                clearTimeout(displayTimeout); // Görüntüleme zamanlayıcısını temizle
+                speechPopup.classList.remove('active'); // Pop-up'ı hemen gizle
+                speechText.textContent = ''; // Metni temizle
+                speechText.classList.remove('slide-in', 'slide-out');
+                // Eğer AI konuşuyorsa ve konuşma devre dışı bırakılırsa, uygunsa tanımayı yeniden başlat
+                if (isAIResponding) {
+                    isAIResponding = false; // AI'ı bitmiş olarak işaretle
+                    setTimeout(() => {
+                        if (recognition && !isRecognitionActive && isRecognitionEnabled) {
+                            recognition.start();
+                            voiceStatus.textContent = "Dinleniyor...";
+                        }
+                    }, 200);
+                }
+            }
+        }
+
+        function toggleSpeechPopupVisibility() {
+            isSpeechPopupVisible = !isSpeechPopupVisible;
+            updateButtonStates();
+            if (!isSpeechPopupVisible) {
+                speechSynthesis.cancel(); // Pop-up gizlenirse devam eden konuşmayı durdur
+                clearTimeout(displayTimeout); // Görüntüleme zamanlayıcısını temizle
+                speechPopup.classList.remove('active'); // Pop-up'ı hemen gizle
+                speechText.textContent = ''; // Metni temizle
+                speechText.classList.remove('slide-in', 'slide-out');
+                // Eğer AI konuşuyorsa ve pop-up manuel olarak gizlenirse, uygunsa tanımayı yeniden başlat
+                if (isAIResponding) {
+                    isAIResponding = false; // AI'ı bitmiş olarak işaretle
+                    setTimeout(() => {
+                        if (recognition && !isRecognitionActive && isRecognitionEnabled) {
+                            recognition.start();
+                            voiceStatus.textContent = "Dinleniyor...";
+                        }
+                    }, 200);
+                }
+            }
+            // Eğer true olursa, `speak` fonksiyonu bir dahaki sefere göstermeyi halleder.
+        }
+
+        function toggleRecognitionService() {
+            isRecognitionEnabled = !isRecognitionEnabled;
+            updateButtonStates();
+            if (isRecognitionEnabled) {
+                // Eğer tanıma daha önce durdurulduysa ve aktif değilse, başlatmayı dene
+                if (recognition && !isRecognitionActive && !isAIResponding) {
+                    recognition.start();
+                    voiceStatus.textContent = "Dinleniyor...";
+                } else if (isAIResponding) {
+                    voiceStatus.textContent = "Femi yanıt veriyor..."; // AI konuşuyorsa durumu koru
+                }
+            } else {
+                // Eğer tanıma şu anda aktifse durdur
+                if (recognition && isRecognitionActive) {
+                    recognition.abort(); // Hemen durdurmak için abort kullan
+                    voiceStatus.textContent = "Ses tanıma kapalı.";
+                }
+                // Eğer tanıma devre dışı bırakılırsa, bekleyen sesli komut durumlarını temizle
+                if (awaitingVoiceQuery) {
+                    awaitingVoiceQuery = false;
+                    if (voiceCommandTimeoutId) {
+                        clearTimeout(voiceCommandTimeoutId);
+                        voiceCommandTimeoutId = null;
+                    }
+                    voiceStatus.textContent = "Ses tanıma kapalı."; // Devre dışı durumu yansıtmak için durumu güncelle
+                }
+            }
+        }
+
+        // Ayarlar menüsünü aç/kapat
+        function toggleSettingsMenu() {
+            settingsMenu.classList.toggle('active');
+        }
+
+        // Butonlara olay dinleyicileri ekle
+        toggleSpeechButton.addEventListener('click', toggleSpeechOutput);
+        toggleSpeechPopupButton.addEventListener('click', toggleSpeechPopupVisibility);
+        toggleRecognitionButton.addEventListener('click', toggleRecognitionService); // Ayarlar menüsündeki mikrofon butonu
+        openSettingsButton.addEventListener('click', toggleSettingsMenu); // Ayarlar menüsü açma butonu
+        closeSettingsButton.addEventListener('click', toggleSettingsMenu); // Ayarlar menüsü kapatma butonu
+
+        // Hata mesajını göster
+        function displayError(message) {
+            errorText.textContent = message;
+            errorMessage.classList.remove('hidden');
+        }
+
+        // Web sitesi pop-up'ını göster
+        function showWebsitePopup(url) {
+            websiteIframe.src = url;
+            websiteOverlay.classList.add('active');
+        }
+
+        // Web sitesi pop-up'ını kapat
+        function closeWebsitePopup() {
+            websiteOverlay.classList.remove('active');
+            // iframe içeriğini temizle ve yüklemeyi durdur
+            websiteIframe.src = 'about:blank';
+        }
+
+        // Kapatma butonuna olay dinleyicisi ekle
+        closeWebsiteButton.addEventListener('click', closeWebsitePopup);
+
+        // Metin okuma fonksiyonu
+        function speak(text) {
+            if (!isSpeechEnabled) {
+                console.log("Speech output is disabled by user.");
+                // Eğer konuşma devre dışı bırakılırsa, ancak AI konuşurken tanıma durdurulduysa, burada yeniden başlat.
+                // Bu, kullanıcı arama sırasında konuşmayı devre dışı bıraktığında durumu ele alır.
+                if (isAIResponding) {
+                    isAIResponding = false; // AI'ı bitmiş olarak işaretle
+                    setTimeout(() => {
+                        if (recognition && !isRecognitionActive && isRecognitionEnabled) {
+                            recognition.start();
+                            voiceStatus.textContent = "Dinleniyor...";
+                        }
+                    }, 200);
+                }
+                return; // Devre dışıysa konuşma yapma
+            }
+
+            // Önceki konuşmaları durdur ve temizle
+            speechSynthesis.cancel();
+            if (currentUtterance) {
+                currentUtterance.onend = null;
+                currentUtterance = null;
+            }
+            clearTimeout(displayTimeout); // Önceki görüntüleme zamanlayıcısını temizle
+
+            // Konuşmadan önce ses tanımayı durdur
+            if (recognition && isRecognitionActive) { // Sadece tanıma gerçekten aktifse durdur
+                recognition.abort(); // Mevcut tanıma oturumunu hemen durdur
+                isRecognitionActive = false; // Bayrağı güncelle
+            }
+            isAIResponding = true; // AI'ın konuştuğunu belirten bayrağı ayarla
+            voiceStatus.textContent = "Femi yanıt veriyor..."; // Durumu güncelle
+
+            // Popup görünürlüğünü isSpeechPopupVisible bayrağına göre ayarla
+            if (isSpeechPopupVisible) {
+                speechPopup.classList.add('active');
+            } else {
+                speechPopup.classList.remove('active');
+            }
+
+            const urlRegex = /(https?:\/\/[^\s]+)|((?:www\.)?[a-z0-9-]+\.[a-z]{2,6}(?:\/[^\s]*)?)/gi;
+            const filteredText = text.replace(urlRegex, '');
+
+            // Cümleleri ayır (noktalama işaretlerine veya birden fazla boşluğa göre)
+            phrasesToSpeak = filteredText.split(/(?<=[.!?])\s+|\s{2,}/).filter(p => p.trim() !== '');
+            currentPhraseIndex = 0; // Yeni konuşma için cümle indeksini sıfırla
+
+            processNextPhrase(); // İlk cümleyle başla
+        }
+
+        // Cümlelerin ve animasyonların sırasını yönetme fonksiyonu
+        function processNextPhrase() {
+            if (currentPhraseIndex < phrasesToSpeak.length) {
+                const phrase = phrasesToSpeak[currentPhraseIndex].trim();
+                currentPhraseIndex++;
+
+                // Sadece pop-up görünürse speechText'i güncelle ve animasyonları uygula
+                if (isSpeechPopupVisible) {
+                    speechText.classList.remove('slide-in', 'slide-out');
+                    speechText.textContent = phrase;
+                    speechText.classList.add('slide-in');
+                } else {
+                    speechText.textContent = ''; // Pop-up görünmüyorsa metnin temizlendiğinden emin ol
+                }
+
+                const words = phrase.split(/\s+/).filter(word => word.length > 0);
+                const displayDuration = Math.max(words.length * 1000, 1500); // Metnin görünür kalma süresi
+
+                currentUtterance = new SpeechSynthesisUtterance(phrase);
+                currentUtterance.lang = 'tr-TR'; // Türkçe dilini sağla
+                if (selectedVoice) {
+                    currentUtterance.voice = selectedVoice; // Seçilen sesi ayarla
+                }
+
+                currentUtterance.onend = () => {
+                    // Bu geri arama, *konuşmanın* bittiği anlamına gelir.
+                    // Metnin *görüntülenmesi* `displayTimeout` tarafından kontrol edilir.
+                    // Görüntüleme veya bir sonraki cümle ile ilgili burada herhangi bir işlem yapmaya gerek yok, çünkü `displayTimeout` bunu halledecek.
+                };
+
+                currentUtterance.onerror = (event) => {
+                    console.error('Speech synthesis error:', phrase, event.error);
+                    // Hata durumunda bile, metnin süresi dolana kadar kalması gerekir.
+                };
+
+                speechSynthesis.speak(currentUtterance);
+
+                clearTimeout(displayTimeout);
+                displayTimeout = setTimeout(() => {
+                    // Bu zamanlayıcı, mevcut cümlenin toplam görüntüleme süresi dolduğunda çalışır.
+                    // Şimdi, kaybolma animasyonunu tetikle ve ardından bir sonraki cümleye geç.
+                    if (isSpeechPopupVisible) { // Sadece görünürse animasyon yap
+                        speechText.classList.remove('slide-in');
+                        speechText.classList.add('slide-out');
+                        speechText.addEventListener('animationend', function handler(event) {
+                            if (event.animationName === 'slideOutToRight') {
+                                speechText.removeEventListener('animationend', handler);
+                                processNextPhrase(); // Sıradaki cümleye geç
+                            }
+                        }, { once: true });
+                    } else {
+                        processNextPhrase(); // Görünmüyorsa, hemen devam et
+                    }
+                }, displayDuration); // Zamanlayıcı için displayDuration kullan
+
+            } else {
+                // Tüm cümleler işlendi.
+                setTimeout(() => {
+                    if (isSpeechPopupVisible) { // Sadece görünürse aktifi kaldır
+                        speechPopup.classList.remove('active');
+                    }
+                    speechText.textContent = '';
+                    speechText.classList.remove('slide-in', 'slide-out');
+                    isAIResponding = false; // AI konuşmayı bitirdi
+
+                    // Yarış koşullarını önlemek için tanımayı yeniden başlatmadan önce kısa bir gecikme
+                    setTimeout(() => {
+                        if (recognition && !isRecognitionActive && isRecognitionEnabled) { // Sadece aktif değilse ve etkinse yeniden başlat
+                            recognition.start();
+                            voiceStatus.textContent = "Dinleniyor...";
+                        } else if (!isRecognitionEnabled) {
+                            voiceStatus.textContent = "Ses tanıma kapalı.";
+                        }
+                    }, 200); // 200ms gecikme
+                }, 500); // Pop-up'ı tamamen gizlemeden önce kısa gecikme
+            }
+        }
+
+        // Konuşma yanıtı penceresini kapatma butonu (manuel kapatma)
+        closeSpeechButton.addEventListener('click', () => {
+            speechSynthesis.cancel(); // Konuşmayı durdur
+            if (currentUtterance) {
+                currentUtterance.onend = null;
+                currentUtterance = null;
+            }
+            clearTimeout(displayTimeout); // Görüntüleme zamanlayıcısını temizle
+            // Devam eden animasyonları durdur ve sınıfları sıfırla
+            speechText.classList.remove('slide-in', 'slide-out');
+            speechPopup.classList.remove('active'); // Manuel kapatmada her zaman gizle
+            speechText.textContent = '';
+            isSpeechPopupVisible = false; // Geçiş durumunun güncellendiğinden emin ol
+            updateButtonStates(); // Buton görselini güncelle
+
+            if (isAIResponding) {
+                isAIResponding = false;
+                setTimeout(() => { // Burada da kısa bir gecikme ekle
+                    if (recognition && !isRecognitionActive && isRecognitionEnabled) {
+                        recognition.start();
+                        voiceStatus.textContent = "Dinleniyor...";
+                    } else if (!isRecognitionEnabled) {
+                        voiceStatus.textContent = "Ses tanıma kapalı.";
+                    }
+                }, 200);
+            }
+        });
+
+
+        // Ses tanımayı başlat
+        function initializeSpeechRecognition() {
+            // Tarayıcının SpeechRecognition API'sini destekleyip desteklemediğini kontrol et
+            if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+                voiceStatus.textContent = "Üzgünüm, tarayıcınız ses tanımayı desteklemiyor.";
+                return;
+            }
+
+            // Tarayıcının mikrofon ve medya cihazları API'sini destekleyip desteklemediğini kontrol et
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                voiceStatus.textContent = "Tarayıcınız mikrofon erişimini desteklemiyor.";
+                return;
+            }
+
+            // Mikrofon izin durumunu kontrol et
+            navigator.permissions.query({ name: 'microphone' }).then((permissionStatus) => {
+                if (permissionStatus.state === 'granted') {
+                    // İzin zaten verilmişse, ses tanımayı doğrudan başlat
+                    voiceStatus.textContent = "Mikrofon izni verildi. Dinleme başlatılıyor...";
+                    startRecognition();
+                } else if (permissionStatus.state === 'denied') {
+                    // İzin reddedilirse, kullanıcıya manuel olarak etkinleştirmesini söyle
+                    voiceStatus.textContent = "Mikrofon izni reddedildi. Sesli komutlar kullanılamıyor. Lütfen tarayıcı ayarlarınızdan manuel olarak etkinleştirin.";
+                } else {
+                    // İzin durumu 'prompt' veya 'undefined' ise, izin iste
+                    voiceStatus.textContent = "Mikrofon izni bekleniyor...";
+                    navigator.mediaDevices.getUserMedia({ audio: true })
+                        .then(() => {
+                            voiceStatus.textContent = "Mikrofon izni verildi. Dinleme başlatılıyor...";
+                            startRecognition();
+                        })
+                        .catch((err) => {
+                            console.error("Mikrofon izni reddedildi veya hata oluştu:", err);
+                            voiceStatus.textContent = "Mikrofon izni reddedildi. Sesli komutlar kullanılamıyor. Lütfen tarayıcı ayarlarınızdan manuel olarak etkinleştirin.";
+                        });
+                }
+            }).catch((err) => {
+                console.error("Mikrofon izin durumu sorgulanırken hata oluştu:", err);
+                voiceStatus.textContent = "Mikrofon izin durumu kontrol edilemedi. Lütfen tarayıcı ayarlarınızı kontrol edin.";
+            });
+
+            function startRecognition() {
+                recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                recognition.continuous = true; // Sürekli dinleme
+                recognition.interimResults = false; // Ara sonuçları gösterme, daha kararlı sonuçlar için
+                recognition.lang = 'tr-TR'; // Türkçe dilini ayarla
+
+                // Ses tanıma başladığında
+                recognition.onstart = () => {
+                    console.log("SR: Recognition started. isRecognitionActive:", isRecognitionActive);
+                    voiceStatus.textContent = "Dinleniyor...";
+                    isRecognitionActive = true; // Tanıma başladığında bayrağı ayarla
+                    console.log("Ses tanıma başlatıldı.");
+                };
+
+                // Ses tanıma bittiğinde
+                recognition.onend = () => {
+                    console.log("SR: Recognition ended. isRecognitionActive:", isRecognitionActive, "isAIResponding:", isAIResponding, "isRecognitionEnabled:", isRecognitionEnabled);
+                    isRecognitionActive = false; // Tanıma durduğunda bayrağı temizle
+                    if (!isAIResponding && isRecognitionEnabled) { // Sadece AI şu anda konuşmuyorsa ve tanıma etkinse yeniden başlat
+                        console.log("SR: Ses tanıma otomatik olarak yeniden başlatılıyor.");
+                        voiceStatus.textContent = "Dinleme durdu. Tekrar başlatılıyor...";
+                        recognition.start();
+                    } else if (!isRecognitionEnabled) {
+                        voiceStatus.textContent = "Ses tanıma kapalı.";
+                    } else if (isAIResponding) {
+                        voiceStatus.textContent = "Femi yanıt veriyor..."; // AI konuşuyorsa durumu koru
+                    }
+                };
+
+                // Ses tanıma sonucu geldiğinde
+                recognition.onresult = async (event) => {
+                    if (isAIResponding || !isRecognitionEnabled) { // AI konuşuyorsa veya tanıma devre dışıysa, yeni sesli komutları yoksay
+                        console.log("SR: AI konuşuyor veya tanıma devre dışı, yeni sesli komut yoksayılıyor.");
+                        return;
+                    }
+
+                    let finalTranscript = '';
+                    // Sadece bu olaydan gelen yeni nihai sonuçları işle
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        const result = event.results[i];
+                        if (result.isFinal) {
+                            finalTranscript += result[0].transcript;
+                        }
+                    }
+
+                    const lowerCaseTranscript = finalTranscript.toLowerCase().trim();
+                    const triggerPhrase = "yapay zeka";
+                    console.log("SR: Result received. Transcript:", finalTranscript, "awaitingVoiceQuery:", awaitingVoiceQuery);
+
+                    // Eğer şu anda sesli sorgu bekliyorsak ("yapay zeka" dendiğinden beri)
+                    if (awaitingVoiceQuery) {
+                        console.log("SR: Awaiting voice query. New transcript:", lowerCaseTranscript);
+                        // Yeni bir sonuç aldığımız için zamanlayıcıyı temizle
+                        if (voiceCommandTimeoutId) {
+                            clearTimeout(voiceCommandTimeoutId);
+                            voiceCommandTimeoutId = null;
+                        }
+
+                        // Eğer yeni transkript hala tetikleyici ifadeyi içeriyorsa (örn: "Yapay Zeka Yapay Zeka" veya tanıma sistemi bir sonraki konuşmada tetikleyiciyi içeriyorsa)
+                        if (lowerCaseTranscript.startsWith(triggerPhrase)) {
+                            console.log("SR: Trigger phrase found in awaiting state. Remaining text:", lowerCaseTranscript.substring(triggerPhrase.length).trim());
+                            const queryAfterTrigger = lowerCaseTranscript.substring(triggerPhrase.length).trim();
+                            if (queryAfterTrigger.length > 0) {
+                                // Tetikleyiciden sonra geçerli bir sorgu var
+                                awaitingVoiceQuery = false; // Bekleme bayrağını sıfırla
+                                voiceStatus.textContent = `Algılandı: "${queryAfterTrigger}" işleniyor...`;
+                                searchInput.value = queryAfterTrigger;
+                                performSearch(queryAfterTrigger);
+                                console.log("SR: Processing query after trigger:", queryAfterTrigger);
+                            } else {
+                                // Sadece "Yapay Zeka" tekrarlandı veya tetikleyiciden sonra boş. Beklemeye devam et.
+                                voiceStatus.textContent = "Yapay Zeka algılandı. Dinliyorum.";
+                                speak("Dinliyorum.");
+                                triggerSound.play();
+                                searchInput.value = '';
+                                // Zamanlayıcıyı yeniden başlat
+                                voiceCommandTimeoutId = setTimeout(() => {
+                                    if (awaitingVoiceQuery) { // Sadece hala bekleniyorsa sıfırla
+                                        awaitingVoiceQuery = false;
+                                        voiceStatus.textContent = "Dinliyor..."; // Sadece durumu sıfırla, konuşma yapma
+                                        console.log("SR: Sesli komut zaman aşımı: 'Yapay Zeka'dan sonra sorgu alınamadı.");
+                                    }
+                                }, 5000);
+                            }
+                        } else if (lowerCaseTranscript.length > 0) {
+                            // Bu, "Yapay Zeka"dan sonraki gerçek sorgudur
+                            awaitingVoiceQuery = false; // Bayrağı sıfırla
+                            voiceStatus.textContent = `Algılandı: "${lowerCaseTranscript}" işleniyor...`;
+                            searchInput.value = lowerCaseTranscript;
+                            performSearch(lowerCaseTranscript);
+                            console.log("SR: Processing direct query after trigger wait:", lowerCaseTranscript);
+                        }
+                        // Eğer lowerCaseTranscript burada boşsa, bu sessizlik anlamına gelir, bu yüzden beklemeye devam ederiz (zamanlayıcı bunu halleder)
+                    } else if (lowerCaseTranscript.includes(triggerPhrase)) {
+                        // "Yapay Zeka" ilk kez duyuldu
+                        console.log("SR: Initial trigger phrase detected. Transcript:", lowerCaseTranscript);
+                        const triggerIndex = lowerCaseTranscript.indexOf(triggerPhrase);
+                        const remainingText = lowerCaseTranscript.substring(triggerIndex + triggerPhrase.length).trim();
+
+                        if (remainingText.length > 0) {
+                            // "Yapay Zeka" ve sorgu aynı konuşmada
+                            voiceStatus.textContent = `Algılandı: "${remainingText}" işleniyor...`;
+                            searchInput.value = remainingText;
+                            performSearch(remainingText);
+                            triggerSound.play(); // Sorgu işlenirken sesi hemen çal
+                            awaitingVoiceQuery = false; // Beklemiyoruz, sorgu işlendi
+                            console.log("SR: Processing query with inline trigger:", remainingText);
+                        } else {
+                            // Sadece "Yapay Zeka" söylendi veya cümlenin sonunda. Beklemeye başla.
+                            awaitingVoiceQuery = true;
+                            voiceStatus.textContent = "Yapay Zeka algılandı. Dinliyorum.";
+                            speak("Dinliyorum.");
+                            triggerSound.play(); // Tetikleyici cümle algılandığında sesi çal
+                            searchInput.value = ''; // Yeni sorgu için girişi temizle
+                            voiceCommandTimeoutId = setTimeout(() => {
+                                if (awaitingVoiceQuery) { // Sadece hala bekleniyorsa sıfırla
+                                    awaitingVoiceQuery = false;
+                                    voiceStatus.textContent = "Dinliyor..."; // Sadece durumu sıfırla, konuşma yapma
+                                    console.log("SR: Sesli komut zaman aşımı: 'Yapay Zeka'dan sonra sorgu alınamadı.");
+                                }
+                            }, 5000); // Sorguyu söylemek için 5 saniye
+                            console.log("SR: Trigger phrase detected, awaiting follow-up query.");
+                        }
+                    } else {
+                        // Tetikleyici ifade bulunmazsa ve bir sorgu beklemiyorsak hiçbir şey yapma.
+                        // Bu, AI'ın sadece "Yapay Zeka"dan sonra yanıt vermesini sağlar.
+                        console.log("SR: Transcript ignored (no trigger or not awaiting).");
+                    }
+                };
+
+                // Ses tanıma hatası oluştuğunda
+                recognition.onerror = (event) => {
+                    console.error("SR: Ses tanıma hatası:", event.error);
+                    voiceStatus.textContent = `Hata: ${event.error}. Lütfen mikrofon iznini kontrol edin.`;
+                    // Hata durumunda bile bir süre sonra durum mesajını sıfırla
+                    if (statusTimeout) {
+                        clearTimeout(statusTimeout);
+                    }
+                    statusTimeout = setTimeout(() => {
+                        voiceStatus.textContent = "Dinleniyor...";
+                    }, 5000); // Hata mesajı için daha uzun süre
+                };
+
+                // Sadece başlangıçta etkinse tanımayı başlat
+                if (isRecognitionEnabled) {
+                    recognition.start();
+                } else {
+                    voiceStatus.textContent = "Ses tanıma kapalı.";
+                }
+            }
+        }
+
+        // Sesli komutları işleme fonksiyonu (Gemini API entegrasyonu)
+        async function processVoiceCommand(command) {
+            // Bu fonksiyon artık doğrudan bir arama yapacak.
+            // Selamlaşma gibi özel durumlar AI tarafından ele alınacak.
+            // Burada sadece web sitesi açma komutlarını ele alıyoruz.
+            const openWebsiteKeywords = {
+                "youtube aç": "https://www.youtube.com",
+                "google aç": "https://www.google.com",
+                "slow roads aç": "https://slowroads.io",
+                "x aç": "https://x.com",
+                "spotify aç": "https://www.spotify.com",
+                "arama motorunu aç": "yzeka.html" // Arama motoruna yönlendir
+            };
+
+            for (const key in openWebsiteKeywords) {
+                if (command.includes(key)) {
+                    const url = openWebsiteKeywords[key];
+                    const blockedDomains = ['youtube.com', 'google.com', 'facebook.com', 'instagram.com', 'twitter.com', 'x.com', 'spotify.com'];
+                    const isBlocked = blockedDomains.some(domain => url.includes(domain));
+
+                    voiceStatus.textContent = `"${key}" komutu algılandı. ${url} açılıyor...`;
+                    speak(`${key} açılıyor.`);
+
+                    if (isBlocked) {
+                        let countdown = 3;
+                        voiceStatus.textContent += ` Bu site güvenlik politikaları nedeniyle önizlenemiyor. Yeni sekmede açılıyor... ${countdown} saniye içinde.`;
+                        const interval = setInterval(() => {
+                            countdown--;
+                            if (countdown > 0) {
+                                countdownElement.textContent = `Bu site güvenlik politikaları nedeniyle önizlenemiyor. Yeni sekmede açılıyor... ${countdown} saniye içinde.`;
+                            } else {
+                                clearInterval(interval);
+                                window.open(url, '_blank');
+                                countdownElement.textContent = `Bu site güvenlik politikaları nedeniyle yeni sekmede açıldı.`;
+                            }
+                        }, 1000);
+                    } else {
+                        // yzeka.html'ye yönlendiriliyorsa doğrudan yönlendir
+                        if (url === 'yzeka.html') {
+                            window.location.href = url;
+                        } else {
+                            showWebsitePopup(url); // Diğer siteler için pop-up göster
+                        }
+                    }
+                    return true; // Komut işlendi
+                }
+            }
+            return false; // Komut özel olarak işlenmedi
+        }
+
+        // Yeni fonksiyon: Cihazdan tarih ve saati al
+        function getDateTimeFromDevice() {
+            const now = new Date();
+            const optionsDate = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const optionsTime = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
+
+            const dateStr = now.toLocaleDateString('tr-TR', optionsDate);
+            const timeStr = now.toLocaleTimeString('tr-TR', optionsTime);
+
+            return `Şu anki tarih: ${dateStr} ve saat: ${timeStr}.`;
+        }
+
+        // Yeni fonksiyon: Halk TV'den haberleri al
+        async function getNewsFromHalkTv() {
+            console.log("Halk TV'den haberler çekilmeye çalışılıyor...");
+            try {
+                const url = "https://halktv.com.tr";
+                // browsing aracının mevcut olup olmadığını kontrol et
+                if (typeof browsing === 'undefined' || typeof browsing.browse !== 'function') {
+                    console.error("Browsing aracı mevcut değil. Haberler çekilemiyor.");
+                    return "Üzgünüm, haberleri almak için gerekli araç şu anda mevcut değil.";
+                }
+
+                const htmlContent = await browsing.browse(url, url);
+                console.log("Halk TV HTML içeriği başarıyla çekildi.");
+
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlContent, 'text/html');
+
+                const newsItems = [];
+                // Halk TV'nin güncel yapısına göre seçiciler (Bu seçiciler değişebilir!)
+                // Genellikle haber kartları için kullanılan sınıflar:
+                // .news-card, .article-card, .news-item, .post-item
+                const articles = doc.querySelectorAll('.news-card, .article-card, .news-item, .post-item');
+
+                for (let i = 0; i < Math.min(articles.length, 5); i++) { // İlk 5 haberi al
+                    const article = articles[i];
+                    // Başlık ve link için yaygın seçiciler
+                    const titleElement = article.querySelector('h2 a, h3 a, .news-title a, .card-title a');
+                    // Açıklama/özet için yaygın seçiciler
+                    const snippetElement = article.querySelector('p.news-snippet, .news-summary, .card-summary');
+
+                    const title = titleElement ? titleElement.textContent.trim() : null;
+                    const link = titleElement ? titleElement.href : null;
+                    const snippet = snippetElement ? snippetElement.textContent.trim() : 'Açıklama yok.';
+
+                    if (title && link) { // Sadece başlık ve link varsa ekle
+                        newsItems.push(`- ${title}: ${snippet} (Daha fazlası: ${link})`);
+                    }
+                }
+
+                if (newsItems.length > 0) {
+                    console.log("Çekilen haberler:", newsItems);
+                    return "İşte Halk TV'den bazı güncel haberler:\n" + newsItems.join('\n');
+                } else {
+                    console.log("Mevcut seçicilerle Halk TV'de haber bulunamadı.");
+                    return "Üzgünüm, Halk TV'den güncel haberleri alırken bir sorun oluştu veya haber bulunamadı.";
+                }
+
+            } catch (error) {
+                console.error("Halk TV'den haber alınırken genel hata oluştu:", error);
+                return "Üzgünüm, Halk TV'den haberleri alırken bir sorun oluştu.";
+            }
+        }
+
+
+        // Arama fonksiyonu
+        async function performSearch(voiceQuery = null) { // voiceQuery parametresi eklendi
+            const query = String(voiceQuery || searchInput.value).trim(); // Sesli sorgu varsa onu kullan, yoksa inputtan al
+            if (!query) {
+                displayError("Lütfen bir arama terimi girin.");
+                // Buton durumunu sıfırla
+                searchButton.disabled = false;
+                buttonText.classList.remove('hidden');
+                loadingSpinner.classList.add('hidden');
+                return;
+            }
+
+            // Easter Egg kontrolü
+            if (query.toLowerCase() === "emirtru") {
+                const easterEggText = "O benim sahibimin nicki sen sahibim değilsin!";
+                aiResponseDiv.innerHTML = `
+                    <div class="result-card bg-blue-50 border-blue-200">
+                        <h3 class="result-title text-blue-800 text-xl mb-2">✨ Yapay Zeka Yanıtı</h3>
+                        <p class="result-snippet text-blue-700">${easterEggText}</p>
+                    </div>
+                `;
+                speak(easterEggText);
+                // Easter Egg yanıtından sonra UI'ı sıfırla
+                searchButton.disabled = false;
+                buttonText.classList.remove('hidden');
+                loadingSpinner.classList.add('hidden');
+                searchInput.value = '';
+                voiceStatus.textContent = "Dinleniyor..."; // Sonraki komut için hazır
+                return; // Easter Egg için daha fazla işlem yapma
+            }
+
+            // Yeni: Hava durumu sorgusu kontrolü
+            if (query.toLowerCase() === "hava durumu") {
+                voiceStatus.textContent = "Hava durumu aranıyor...";
+                speak("Hava durumu aranıyor.");
+                try {
+                    // Doğrudan belirtilen URL'yi aç
+                    const weatherUrl = "https://www.google.com/search?q=hava+durumu";
+                    showWebsitePopup(weatherUrl);
+                    aiResponseDiv.innerHTML = `
+                        <div class="result-card bg-blue-50 border-blue-200">
+                            <h3 class="result-title text-blue-800 text-xl mb-2">✨ Hava Durumu Sonuçları</h3>
+                            <p class="result-snippet text-blue-700">Google'da hava durumu sonuçları gösteriliyor.</p>
+                        </div>
+                    `;
+                    speak("Hava durumu sonuçları gösteriliyor.");
+                } catch (error) {
+                    console.error("Hava durumu araması sırasında hata:", error);
+                    aiResponseDiv.innerHTML = `
+                        <div class="result-card bg-red-50 border-red-200">
+                            <h3 class="result-title text-red-800 text-xl mb-2">⚠️ Hata</h3>
+                            <p class="result-snippet text-red-700">Hava durumu aranırken bir hata oluştu: ${error.message}</p>
+                        </div>
+                    `;
+                    speak(`Hava durumu aranırken bir hata oluştu: ${error.message}`);
+                } finally {
+                    searchButton.disabled = false;
+                    buttonText.classList.remove('hidden');
+                    loadingSpinner.classList.add('hidden');
+                    searchInput.value = '';
+                    voiceStatus.textContent = "Dinleniyor...";
+                    return; // Hava durumu sorgusu işlendi, diğer AI ve web aramalarını atla
+                }
+            }
+
+
+            // Arama başladığında UI güncellemeleri
+            searchButton.disabled = true;
+            buttonText.classList.add('hidden');
+            loadingSpinner.classList.remove('hidden');
+            resultsDiv.innerHTML = ''; // Önceki web sonuçlarını temizle
+            aiResponseDiv.innerHTML = ''; // Önceki AI yanıtını temizle
+            noResultsMessage.classList.add('hidden');
+            errorMessage.classList.add('hidden');
+            voiceStatus.textContent = `"${query}" için yanıt aranıyor...`;
+            
+            speak("Yanıt aranıyor.");
+
+
+            try {
+                // 1. Yapay Zeka Yanıtı Oluşturma (Gemini API kullanarak)
+                aiResponseDiv.innerHTML = `
+                    <div class="result-card bg-blue-50 border-blue-200">
+                        <h3 class="result-title text-blue-800 text-xl mb-2">✨ Yapay Zeka Yanıtı</h3>
+                        <p class="text-center text-gray-500">Yapay zeka yanıtı oluşturuluyor...</p>
+                    </div>
+                `;
+
+                let chatHistory = [];
+                let promptText = `Çok uzun yanıtlar verme, kısa ve öz ol. Eğer kim olduğun sorulursa, "Ben Femi." diye yanıt ver. Görsel oluşturma veya medya işleme yeteneğim olmadığını unutma. Eğer bir web sitesi açma veya ziyaret etme komutu alırsan (örn: "YouTube aç", "Google'a git", "slow roads aç", "x aç"), yanıtın sadece o web sitesinin URL'si olsun (örn: "https://www.youtube.com", "https://www.google.com", "https://slowroads.io", "https://x.com"). Başka hiçbir metin ekleme. Sadece URL'yi ver. Eğer kullanıcının girişi bir selamlaşma veya basit bir sohbet başlangıcıysa (örn: "Merhaba", "Selam", "Nasılsın", "Dostum"), kısa ve samimi bir şekilde selamla veya yanıt ver (örn: "Merhaba!", "Selam!", "İyiyim, sen nasılsın?", "Merhaba Emir!"). Diğer durumlarda, kullanıcının arama sorgusuna kısa, bilgilendirici ve özet bir yanıt ver: "${query}"`;
+
+                // Tarih/saat ile ilgili bir sorgu olup olmadığını kontrol et
+                const lowerCaseQuery = query.toLowerCase();
+                if (lowerCaseQuery.includes("saat kaç") || lowerCaseQuery.includes("bugün günlerden ne") || lowerCaseQuery.includes("bugünün tarihi ne") || lowerCaseQuery.includes("tarih ve saat")) {
+                    const dateTimeInfo = getDateTimeFromDevice(); // Cihazdan tarih/saat al
+                    if (dateTimeInfo) {
+                        promptText += ` ${dateTimeInfo} Bu bilgiyi kullanarak soruyu yanıtla.`;
+                    }
+                } else if (lowerCaseQuery.includes("haberler") || lowerCaseQuery.includes("son dakika") || lowerCaseQuery.includes("gündem") || lowerCaseQuery.includes("halktv haberleri")) {
+                    console.log("Kullanıcı haberleri sordu. getNewsFromHalkTv çağrılıyor...");
+                    const newsInfo = await getNewsFromHalkTv();
+                    if (newsInfo) {
+                        promptText += ` ${newsInfo} Bu bilgiyi kullanarak soruyu yanıtla.`;
+                    }
+                }
+
+                chatHistory.push({ role: "user", parts: [{ text: promptText }] });
+                const payload = { contents: chatHistory };
+                // Kendi Gemini API anahtarını buraya yapıştır.
+                const apiKey = "AIzaSyAng0nZ5N8ZyQmNLkVhf0HZbziVXBa_Xbw"; // API anahtarı buraya yerleştirildi
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        let aiText = result.candidates[0].content.parts[0].text;
+                        // AI yanıtına ek bir cümle ekle
+                        aiText += " İstediğini sor, konuşmaktan çekinme.";
+
+                        // AI yanıtında URL ara
+                        // Hem http/https hem de www ile başlayan URL'leri, hem de sadece domain.tld formatındaki URL'leri yakala
+                        const urlRegex = /(https?:\/\/[^\s]+)|((?:www\.)?[a-z0-9-]+\.[a-z]{2,6}(?:\/[^\s]*)?)/gi;
+                        const foundUrls = aiText.match(urlRegex);
+
+                        let suggestedUrl = null;
+                        if (foundUrls && foundUrls.length > 0) {
+                            suggestedUrl = foundUrls[0];
+                            // Eğer URL http veya https ile başlamıyorsa https ekle
+                            if (!suggestedUrl.startsWith('http://') && !suggestedUrl.startsWith('https://')) {
+                                suggestedUrl = 'https://' + suggestedUrl;
+                            }
+                            console.log("Detected URL:", suggestedUrl); // Tespit edilen URL'yi konsola yazdır
+
+                            // iframe'de gösterilemeyecek bilinen siteler
+                            const blockedDomains = ['youtube.com', 'google.com', 'facebook.com', 'instagram.com', 'twitter.com', 'x.com', 'spotify.com'];
+                            const isBlocked = blockedDomains.some(domain => suggestedUrl.includes(domain));
+
+                            // AI yanıtını her zaman göster
+                            aiResponseDiv.innerHTML = `
+                                <div class="result-card bg-blue-50 border-blue-200">
+                                    <h3 class="result-title text-blue-800 text-xl mb-2">✨ Yapay Zeka Yanıtı</h3>
+                                    <p class="result-snippet text-blue-700">${aiText}</p>
+                                </div>
+                            `;
+                            speak(aiText); // AI yanıtını seslendir
+
+                            // Eğer site engelliyse yeni sekmede aç, yoksa pop-up'ta göster
+                            if (isBlocked) {
+                                let countdown = 3;
+                                aiResponseDiv.innerHTML += `
+                                    <p id="countdownMessage" class="mt-3 text-gray-600">Bu site güvenlik politikaları nedeniyle önizlenemiyor. Yeni sekmede açılıyor... ${countdown} saniye içinde.</p>
+                                `;
+                                const countdownElement = document.getElementById('countdownMessage');
+
+                                const interval = setInterval(() => {
+                                    countdown--;
+                                    if (countdown > 0) {
+                                        countdownElement.textContent = `Bu site güvenlik politikaları nedeniyle önizlenemiyor. Yeni sekmede açılıyor... ${countdown} saniye içinde.`;
+                                    } else {
+                                        clearInterval(interval);
+                                        window.open(suggestedUrl, '_blank');
+                                        countdownElement.textContent = `Bu site güvenlik politikaları nedeniyle yeni sekmede açıldı.`;
+                                    }
+                                }, 1000);
+
+                            } else {
+                                showWebsitePopup(suggestedUrl); // URL bulunursa, doğrudan pop-up'ı göster
+                            }
+                        } else {
+                            aiResponseDiv.innerHTML = `
+                                <div class="result-card bg-blue-50 border-blue-200">
+                                    <h3 class="result-title text-blue-800 text-xl mb-2">✨ Yapay Zeka Yanıtı</h3>
+                                    <p class="result-snippet text-blue-700">${aiText}</p>
+                                </div>
+                            `;
+                            speak(aiText); // AI yanıtını seslendir
+                        }
+                    } else {
+                        aiResponseDiv.innerHTML = '<p class="text-center text-gray-500">Yapay zeka yanıtı alınamadı.</p>';
+                    }
+                } catch (aiError) {
+                    console.error("Yapay zeka yanıtı hatası:", aiError);
+                    // API çağrısı başarısız olursa sahte yanıt göster
+                    aiResponseDiv.innerHTML = `
+                        <div class="result-card bg-blue-50 border-blue-200">
+                            <h3 class="result-title text-blue-800 text-xl mb-2">✨ Yapay Zeka Yanıtı (Mock)</h3>
+                            <p class="result-snippet text-blue-700">Merhaba! Ben Femi. Sorgunla ilgili bilgi veremiyorum çünkü yapay zeka servisine erişilemiyor. Lütfen API anahtarını kontrol et ve daha sonra tekrar dene. Eğer bir web sitesi önerisi bekliyorsan, şu an için doğrudan açamıyorum.</p>
+                        </div>
+                    `;
+                    speak("Üzgünüm, yapay zeka yanıtı alınamadı. Lütfen daha sonra tekrar deneyin.");
+                }
+
+                // 2. Web Arama Sonuçları (google_search aracı kullanarak)
+                if (typeof google_search !== 'undefined' && typeof google_search.search === 'function') {
+                    const searchResults = await google_search.search(queries=[query, query + " search"]);
+
+                    if (searchResults && searchResults.length > 0 && searchResults[0].results) {
+                        const results = searchResults[0].results;
+                        if (results.length === 0) {
+                            noResultsMessage.classList.remove('hidden');
+                        } else {
+                            results.forEach((result, index) => {
+                                const resultCard = document.createElement('div');
+                                // Animasyon için başlangıç sınıfları eklendi
+                                resultCard.className = 'result-card opacity-0 translate-y-5 transition-all duration-500 ease-out';
+
+                                const title = document.createElement('h3');
+                                title.className = 'result-title text-lg mb-1';
+                                title.textContent = result.source_title || 'Başlık Yok';
+
+                                const url = document.createElement('a');
+                                url.className = 'result-url block mb-2';
+                                url.href = result.url || '#';
+                                url.target = '_blank'; // Yeni sekmede aç
+                                url.textContent = result.url || 'URL Yok';
+
+                                const snippet = document.createElement('p');
+                                snippet.className = 'result-snippet';
+                                snippet.textContent = result.snippet || 'Açıklama mevcut değil.';
+
+                                resultCard.appendChild(title);
+                                resultCard.appendChild(url);
+                                resultCard.appendChild(snippet);
+                                resultsDiv.appendChild(resultCard);
+
+                                // Her kartın animasyonunu hafif gecikmeyle başlat
+                                setTimeout(() => {
+                                    resultCard.classList.remove('opacity-0', 'translate-y-5');
+                                    resultCard.classList.add('opacity-100', 'translate-y-0');
+                                }, index * 100); // Her kart için 100ms gecikme
+                            });
+                        }
+                    } else {
+                        noResultsMessage.classList.remove('hidden');
+                    }
+                } else {
+                    resultsDiv.innerHTML = '';
+                }
+
+            } catch (mainError) {
+                console.error("Genel arama hatası:", mainError);
+                displayError(mainError.message || "Arama sırasında genel bir hata oluştu. Lütfen tekrar deneyin.");
+            } finally {
+                // Arama bittiğinde UI güncellemeleri
+                searchButton.disabled = false;
+                buttonText.classList.remove('hidden');
+                loadingSpinner.classList.add('hidden');
+                // Arama kutucuğunu sıfırla
+                searchInput.value = '';
+                console.log("performSearch finished, button re-enabled."); // Fonksiyonun bittiğini kontrol etmek için
+            }
+        }
+
+        // Arama düğmesine tıklama olayını dinle
+        searchButton.addEventListener('click', performSearch);
+
+        // Enter tuşuna basıldığında arama yap
+        searchInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                performSearch();
+            }
+        });
+
+        // Sesleri doldurma ve varsayılanı ayarlama
+        function populateVoiceList() {
+            const voices = speechSynthesis.getVoices();
+            voiceSelect.innerHTML = ''; // Mevcut seçenekleri temizle
+
+            // Türkçe veya İngilizce sesleri tercih et
+            let defaultVoice = null;
+            voices.forEach(voice => {
+                const option = document.createElement('option');
+                option.textContent = `${voice.name} (${voice.lang})`;
+                option.value = voice.name;
+                voiceSelect.appendChild(option);
+
+                // Türkçe veya İngilizce bir ses bulup varsayılan olarak ayarla
+                if (!defaultVoice && (voice.lang.startsWith('tr') || voice.lang.startsWith('en'))) {
+                    defaultVoice = voice;
+                }
+            });
+
+            // Eğer varsayılan bir ses bulunduysa, onu seçili yap
+            if (defaultVoice) {
+                voiceSelect.value = defaultVoice.name;
+                selectedVoice = defaultVoice;
+            } else if (voices.length > 0) {
+                // Hiç Türkçe veya İngilizce ses yoksa ilk sesi seç
+                voiceSelect.value = voices[0].name;
+                selectedVoice = voices[0];
+            }
+        }
+
+        // Ses listesi yüklendiğinde veya değiştiğinde populateVoiceList'i çağır
+        speechSynthesis.onvoiceschanged = populateVoiceList;
+
+        // Sayfa yüklendiğinde başlangıç durumu güncellemesi
+        window.addEventListener('load', () => {
+            initializeSpeechRecognition();
+            updateButtonStates(); // Başlangıç buton durumlarını ayarla
+            populateVoiceList(); // Ses listesini doldur
+        });
+
+        // Ses seçimi değiştiğinde
+        voiceSelect.addEventListener('change', () => {
+            const voices = speechSynthesis.getVoices();
+            selectedVoice = voices.find(voice => voice.name === voiceSelect.value);
+            console.log("Seçilen ses:", selectedVoice ? selectedVoice.name : "Yok");
+        });
+    </script>
+</body>
+</html>
